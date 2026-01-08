@@ -202,7 +202,8 @@ export default function IssueDetailsDialog({
                     )}
                     {(deleteError || updateError) && (
                         <p className="text-red-500">
-                            {deleteError?.message || updateError?.message}
+                            {/* {deleteError?.message || updateError?.message} */}
+                            Error occured
                         </p>
                     )}
                 </div>

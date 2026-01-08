@@ -20,7 +20,7 @@ const useFetch = <T, Args extends any[]>(
     } catch (err: any) {
       const errorObject = err instanceof Error ? err : new Error(err?.message || "An error occurred")
       setError(errorObject)
-      toast.error(errorObject.message)
+      toast.error("Error")
     } finally {
       setLoading(false)
     }

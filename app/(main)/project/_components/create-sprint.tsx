@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react"; // Added useEffect
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -13,7 +13,8 @@ import { format, addDays } from "date-fns";
 import { sprintSchema } from "@/app/lib/validators";
 import useFetch from "@/hooks/use-fetch";
 import { createSprint } from "@/actions/sprints";
-import { ProjectType } from "@/lib/types";
+import { ProjectType, SprintType } from "@/lib/types";
+import { BarLoader } from "react-spinners"; // Added BarLoader
 import "react-day-picker/style.css";
 
 type Props = {
@@ -32,18 +33,19 @@ type SprintFormValues = {
 export default function CreateSprint({
     projectTitle,
     projectKey,
+    sprintKey: initialSprintKey,
     projectId,
-    sprintKey: initialSprintKey, // Renamed to initial
 }: Props) {
     const [showForm, setShowForm] = useState(false);
-    const [currentSprintKey, setCurrentSprintKey] = useState(initialSprintKey); // Local state tracker
+    const [currentSprintKey, setCurrentSprintKey] = useState(initialSprintKey);
     const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>({
         from: new Date(),
         to: addDays(new Date(), 14),
     });
 
     const router = useRouter();
-    const { loading: createSprintLoading, fn: createSprintFn, data: createdSprint } = useFetch(createSprint);
+    // Added SprintType generic to match your project schema
+    const { loading: createSprintLoading, fn: createSprintFn, data: createdSprint } = useFetch<SprintType, [string, SprintFormValues]>(createSprint);
 
     const {
         register,
@@ -51,7 +53,7 @@ export default function CreateSprint({
         handleSubmit,
         reset,
         formState: { errors },
-    } = useForm<SprintFormValues>({ // Add the generic type here
+    } = useForm<SprintFormValues>({
         resolver: zodResolver(sprintSchema),
         defaultValues: {
             name: `${projectKey}-${currentSprintKey}`,
@@ -60,7 +62,6 @@ export default function CreateSprint({
         },
     });
 
-    // CRITICAL FIX: Synchronize form when local sprint key increments
     useEffect(() => {
         reset({
             name: `${projectKey}-${currentSprintKey}`,
@@ -73,10 +74,9 @@ export default function CreateSprint({
         await createSprintFn(projectId, data);
     };
 
-    // Handle Success: Increment key and close form
     useEffect(() => {
         if (createdSprint) {
-            setCurrentSprintKey((prev) => prev + 1); // Increment for next time
+            setCurrentSprintKey((prev) => prev + 1);
             setShowForm(false);
             router.refresh();
         }
@@ -107,34 +107,32 @@ export default function CreateSprint({
 
                 <Button
                     onClick={() => setShowForm(!showForm)}
-                    className={`
-            h-12 px-6 rounded-xl font-bold text-[13px] transition-all active:scale-95 flex items-center gap-2
-            ${!showForm
-                            ? "bg-[#1D1D1F] text-white hover:bg-black shadow-xl shadow-black/5"
-                            : "bg-white border border-[#F2F0EB] text-[#FF7A5C] hover:bg-[#FAF9F6]"
-                        }
-          `}
+                    className={`h-12 px-6 rounded-xl font-bold text-[13px] transition-all active:scale-95 flex items-center gap-2 ${
+                        !showForm ? "bg-[#1D1D1F] text-white hover:bg-black" : "bg-white border border-[#F2F0EB] text-[#FF7A5C]"
+                    }`}
                 >
                     {!showForm ? (
-                        <>
-                            <Plus size={16} strokeWidth={3} />
-                            New Sprint
-                        </>
+                        <> <Plus size={16} strokeWidth={3} /> New Sprint </>
                     ) : (
-                        <>
-                            <X size={16} strokeWidth={3} />
-                            Close
-                        </>
+                        <> <X size={16} strokeWidth={3} /> Close </>
                     )}
                 </Button>
             </div>
 
-            {/* 2. Elevated Form Container */}
+            {/* 2. Elevated Form Container with BarLoader */}
             {showForm && (
-                <div className="bg-[#FAF9F6]/50 backdrop-blur-md border border-[#F2F0EB] rounded-[32px] p-2 mb-10 animate-in fade-in slide-in-from-top-4 duration-500">
+                <div className="bg-[#FAF9F6]/50 backdrop-blur-md border border-[#F2F0EB] rounded-[32px] p-2 mb-10 animate-in fade-in slide-in-from-top-4 duration-500 overflow-hidden relative">
+                    
+                    {/* SYSTEM LOADER OVERLAY */}
+                    {createSprintLoading && (
+                        <div className="absolute inset-x-0 top-0 z-50">
+                            <BarLoader width={"100%"} color="#FF7A5C" height={4} />
+                        </div>
+                    )}
+
                     <form
                         onSubmit={handleSubmit(onSubmit)}
-                        className="bg-white border border-[#F2F0EB] rounded-[28px] p-8 flex flex-col lg:flex-row items-center gap-6 shadow-sm"
+                        className={`bg-white border border-[#F2F0EB] rounded-[28px] p-8 flex flex-col lg:flex-row items-center gap-6 shadow-sm transition-opacity ${createSprintLoading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}
                     >
                         <div className="w-full lg:w-1/3 space-y-2">
                             <div className="flex items-center gap-2 mb-1">
@@ -157,11 +155,11 @@ export default function CreateSprint({
                             </div>
                             <Controller
                                 control={control}
-                                name="startDate" // Use a real field name from your schema
-                                render={({ field }) => (
+                                name="startDate"
+                                render={() => (
                                     <Popover>
                                         <PopoverTrigger asChild>
-                                            <Button variant="outline" className="h-12 w-full ...">
+                                            <Button variant="outline" className="h-12 w-full bg-white border-[#F2F0EB] rounded-xl justify-between px-4 font-bold text-[13px]">
                                                 <span className="flex items-center gap-2">
                                                     {dateRange.from && dateRange.to ? (
                                                         `${format(dateRange.from, "MMM dd")} — ${format(dateRange.to, "MMM dd")}`
@@ -172,24 +170,22 @@ export default function CreateSprint({
                                                 <CalendarIcon size={14} className="text-[#FF7A5C]" />
                                             </Button>
                                         </PopoverTrigger>
-                                        <PopoverContent className="...">
+                                        <PopoverContent className="w-auto p-4 bg-white/90 backdrop-blur-2xl border-white/20 rounded-[24px] shadow-2xl" align="start">
                                             <DayPicker
-                                            classNames={{
-                                                chevron: "fill-black",
-                                                range_start: "bg-[#ff7a5c] p-2 rounded-full",
-                                                range_end: "bg-[#ff7a5c] p-2 rounded-full",
-                                                range_middle: "bg-[#ff7a5c]/15 p-2 rounded-full",
-                                                day_button: "border-none",
-                                                today: "text-black",
-                                              }}
+                                                classNames={{
+                                                    chevron: "fill-[#FF7A5C]",
+                                                    range_start: "bg-[#FF7A5C] text-white rounded-full",
+                                                    range_end: "bg-[#FF7A5C] text-white rounded-full",
+                                                    range_middle: "bg-[#FFF0EA] text-[#FF7A5C]",
+                                                    day_button: "hover:bg-[#FAF9F6] rounded-full transition-colors",
+                                                    today: "font-black text-[#FF7A5C] underline",
+                                                }}
                                                 mode="range"
                                                 disabled={[{ before: new Date() }]}
                                                 selected={dateRange}
                                                 onSelect={(range) => {
-                                                    // FIX: Only update if range is complete to satisfy your non-nullable state
                                                     if (range?.from && range?.to) {
                                                         setDateRange({ from: range.from, to: range.to });
-                                                        // Manually sync both form fields
                                                         reset({
                                                             ...control._formValues,
                                                             startDate: range.from,
@@ -197,7 +193,6 @@ export default function CreateSprint({
                                                         });
                                                     }
                                                 }}
-                                            // ... classNames
                                             />
                                         </PopoverContent>
                                     </Popover>
@@ -209,9 +204,9 @@ export default function CreateSprint({
                             <Button
                                 type="submit"
                                 disabled={createSprintLoading}
-                                className="w-full h-12 bg-[#FF7A5C] hover:bg-black text-white rounded-xl font-bold text-[13px] transition-all shadow-lg shadow-[#FF7A5C]/15 flex items-center justify-center gap-2 group"
+                                className="w-full h-14 bg-[#FF7A5C] hover:bg-black text-white rounded-xl font-bold text-[13px] transition-all shadow-lg shadow-[#FF7A5C]/15 flex items-center justify-center gap-2 group"
                             >
-                                {createSprintLoading ? "Processing..." : (
+                                {createSprintLoading ? "Initializing Node..." : (
                                     <>
                                         Initialize Sprint
                                         <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />

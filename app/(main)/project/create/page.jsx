@@ -138,7 +138,7 @@ const CreateProjectPage = () => {
 
             {error && (
               <div className="p-4 bg-red-50 border border-red-100 rounded-2xl">
-                <p className="text-red-500 text-[12px] font-bold text-center uppercase tracking-tight">{error.message}</p>
+                <p className="text-red-500 text-[12px] font-bold text-center uppercase tracking-tight">Error creating. Try different key</p>
               </div>
             )}
           </form>

@@ -65,6 +65,7 @@ export default function IssueCreationDrawer({
     register,
     handleSubmit,
     reset,
+    formState: {errors}
   } = useForm({
     resolver: zodResolver(issueSchema),
     defaultValues: {
@@ -148,6 +149,8 @@ export default function IssueCreationDrawer({
               placeholder="Enter a clear, descriptive title"
               className="h-12 text-lg font-medium border-gray-300 dark:border-gray-700 focus:border-indigo-500 focus:ring-indigo-500 rounded-xl"
             />
+            {errors.title && <p className="text-[#FF7A5C] text-[11px] font-bold mt-1 ml-1 uppercase">{errors.title.message}</p>}
+
           </div>
 
           {/* Assignee & Priority */}
@@ -174,7 +177,9 @@ export default function IssueCreationDrawer({
                     </SelectContent>
                   </Select>
                 )}
-              />
+                
+                />
+                {errors.assigneeId && <p className="text-[#FF7A5C] text-[11px] font-bold mt-1 ml-1 uppercase">{errors.assigneeId.message}</p>}
             </div>
 
             {/* Priority */}

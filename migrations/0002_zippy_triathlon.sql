@@ -1,0 +1,1 @@
+ALTER TABLE "sprintTable" DROP CONSTRAINT "sprintTable_name_unique";

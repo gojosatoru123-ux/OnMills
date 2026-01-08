@@ -30,7 +30,7 @@ export const projectTable = pgTable('projectTable', {
 
 export const sprintTable = pgTable("sprintTable", {
     id: uuid("id").primaryKey().defaultRandom(),
-    name: text("name").notNull().unique(),
+    name: text("name").notNull(),
     startDate: timestamp("start_date").notNull(),
     endDate: timestamp("end_date").notNull(),
     status: sprintStatusEnum("status").default("PLANNED").notNull(),

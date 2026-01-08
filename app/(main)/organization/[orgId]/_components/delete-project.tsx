@@ -74,7 +74,7 @@ export default function DeleteProject({ projectId }:Props) {
 
       {error && (
         <span className="text-[10px] font-bold text-red-500 uppercase tracking-tighter animate-in fade-in slide-in-from-right-1">
-          {error.message || "System Error"}
+          {"Error deleting"}
         </span>
       )}
     </div>

@@ -30,7 +30,7 @@ type Props = {
 }
 
 const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
-    const [currentSprint, setCurrentSprint] = useState<SprintType | undefined>(
+    const [currentSprint, setCurrentSprint] = useState<SprintType>(
         sprints.find((spr) => spr.status === "ACTIVE") || sprints[0]
     );
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -59,7 +59,16 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
     };
 
     const onDragEnd = async (result: DropResult) => {
-        if (isMobile || !currentSprint || !issues || currentSprint.status === "PLANNED") return;
+        if (currentSprint.status === "PLANNED") {
+            toast.warning("Start the sprint to update board");
+            return;
+          }
+          if (currentSprint.status === "COMPLETED") {
+            toast.warning("Cannot update board after sprint end");
+            return;
+          }
+
+        if (isMobile || !currentSprint || !issues) return;
 
         const { destination, source } = result;
         if (!destination || (destination.droppableId === source.droppableId && destination.index === source.index)) return;

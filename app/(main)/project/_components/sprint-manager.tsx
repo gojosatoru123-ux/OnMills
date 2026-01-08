@@ -211,7 +211,7 @@ export default function SprintManager({
 
       {error && (
         <p className="mt-4 text-center text-red-500 text-[11px] font-bold uppercase tracking-widest bg-red-50 py-2 rounded-lg border border-red-100">
-          System Error: {error instanceof Error ? error.message : "Protocol Failure"}
+          System Error: {error instanceof Error ? "Error Occured" : "Protocol Failure"}
         </p>
       )}
     </div>
