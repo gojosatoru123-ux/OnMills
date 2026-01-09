@@ -1,0 +1,1 @@
+ALTER TABLE "issues" ALTER COLUMN "track" SET DEFAULT '{"TODO"}';

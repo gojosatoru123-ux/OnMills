@@ -53,6 +53,7 @@ export const issues = pgTable("issues", {
     sprintId: uuid("sprint_id").references(() => sprintTable.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    track: issueStatusEnum("track").array().notNull().default(['TODO'])
 }, (t) => [
     index("status_order_idx").on(t.status, t.order),
 ]);

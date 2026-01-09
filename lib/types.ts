@@ -42,4 +42,5 @@ export interface IssueType {
     sprintId: string | null;
     createdAt: Date;
     updatedAt: Date;
+    track: IssueType["status"][];
 }

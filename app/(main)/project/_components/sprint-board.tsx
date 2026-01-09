@@ -2,7 +2,7 @@
 
 import { DragDropContext, Draggable, Droppable, DropResult } from "@hello-pangea/dnd";
 import IssueCreationDrawer from "./create-issue";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import SprintManager from "./sprint-manager";
 import statuses from "@/data/status.json";
 import { Button } from "@/components/ui/button";
@@ -12,13 +12,13 @@ import { BarLoader } from "react-spinners";
 import IssueCard from "@/components/issue-card";
 import { toast } from "sonner";
 import BoardFilters from "./board-filters";
-import { Plus, CircleDot } from "lucide-react";
+import { Plus, CircleDot, ChevronRight, RotateCcw, Activity, ArrowRight } from "lucide-react";
 import { IssueType, ProjectType, SprintType, UserType } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export type DetailedIssue = IssueType & {
-    project? : ProjectType;
+    project?: ProjectType;
     assignee: UserType | null;
     reporter: UserType;
 };
@@ -59,43 +59,79 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
     };
 
     const onDragEnd = async (result: DropResult) => {
+        // 1. Sprint Status Guards
         if (currentSprint.status === "PLANNED") {
             toast.warning("Start the sprint to update board");
             return;
-          }
-          if (currentSprint.status === "COMPLETED") {
+        }
+        if (currentSprint.status === "COMPLETED") {
             toast.warning("Cannot update board after sprint end");
             return;
-          }
-
+        }
+    
+        // 2. Early Exits
         if (isMobile || !currentSprint || !issues) return;
-
+    
         const { destination, source } = result;
-        if (!destination || (destination.droppableId === source.droppableId && destination.index === source.index)) return;
-
-        const newIssues = [...issues];
-        const sourceItems = newIssues.filter(i => i.status === source.droppableId);
-        const destItems = newIssues.filter(i => i.status === destination.droppableId);
-
-        let movedItem;
+    
+        if (
+            !destination || 
+            (destination.droppableId === source.droppableId && destination.index === source.index)
+        ) {
+            return;
+        }
+    
+        // 3. Create a deep copy for manipulation
+        const newIssues: DetailedIssue[] = [...issues];
+    
+        // Filter issues by column
+        const sourceItems = newIssues.filter((i) => i.status === source.droppableId);
+        const destItems = newIssues.filter((i) => i.status === destination.droppableId);
+    
+        // 4. Movement Logic
         if (source.droppableId === destination.droppableId) {
+            // REORDERING (Same Column)
             const reordered = Array.from(sourceItems);
             const [removed] = reordered.splice(source.index, 1);
             reordered.splice(destination.index, 0, removed);
-            reordered.forEach((item, idx) => item.order = idx);
+            
+            // Update local order indices
+            reordered.forEach((item, idx) => {
+                item.order = idx;
+            });
         } else {
-            [movedItem] = sourceItems.splice(source.index, 1);
-            movedItem.status = destination.droppableId as IssueType['status'];
+            // MOVING (Cross Column)
+            const [movedItem] = sourceItems.splice(source.index, 1);
+            
+            const newStatus = destination.droppableId as DetailedIssue["status"];
+    
+            // Logic: Update status AND append to history track
+            movedItem.status = newStatus;
+            
+            // Append the new status to the track array
+            // We ensure track is initialized if it's somehow null/undefined
+            movedItem.track = [...(movedItem.track || []), newStatus];
+    
             destItems.splice(destination.index, 0, movedItem);
-            sourceItems.forEach((item, i) => item.order = i);
-            destItems.forEach((item, i) => item.order = i);
+    
+            // Re-index both affected columns
+            sourceItems.forEach((item, i) => (item.order = i));
+            destItems.forEach((item, i) => (item.order = i));
         }
-
-        const updated = newIssues.map(item =>
-            [...sourceItems, ...destItems].find(i => i.id === item.id) || item
-        );
-        setIssues(updated.sort((a, b) => a.order - b.order));
-        updateIssueOrderFn(updated);
+    
+        // 5. Reconstruct the full list
+        // We map through original issues and replace the ones that were in the affected columns
+        const updated = newIssues.map((item) => {
+            const found = [...sourceItems, ...destItems].find((i) => i.id === item.id);
+            return found ? { ...found } : item;
+        });
+    
+        // 6. Update State & DB
+        // Maintain the "Vision Pro" sorting for the lens/filter bar
+        const sortedUpdated = updated.sort((a, b) => a.order - b.order);
+        
+        setIssues(sortedUpdated);
+        updateIssueOrderFn(sortedUpdated);
     };
 
     if (issuesError) {
@@ -224,6 +260,118 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
         </div>
     );
 
+    // shared tracking component of life cycle
+
+    const IssueLifecycleDisplay = () => {
+        const MASTER_SEQUENCE = [
+            "TODO", "PURCHASE", "STORE", "BUFFING",
+            "PAINTING", "WINDING", "ASSEMBLY", "PACKING", "SALES"
+        ];
+
+        return (
+            <div className="p-2 font-sans text-[#3D3D3D]">
+                <div className="fixed inset-0 overflow-hidden pointer-events-none">
+                    <div className="absolute top-[-5%] right-[-5%] w-[35%] h-[35%] bg-[#FCEEE9] rounded-full blur-[120px] opacity-40" />
+                </div>
+
+                <div className="relative z-10 max-w-full mx-auto space-y-11">
+                    {filteredIssues && filteredIssues.length === 0 ? (
+                        <div className="p-20 text-center bg-white/60 backdrop-blur-xl rounded-[2.5rem] border border-black/3 shadow-sm">
+                            <p className="text-black/30 font-medium tracking-tight italic">Inventory track is empty.</p>
+                        </div>
+                    ) : (
+                        filteredIssues?.map((issue) => {
+                            const trackHistory = issue.track ?? [];
+
+                            return (
+                                <div key={issue.id} className="animate-in fade-in slide-in-from-bottom-2 duration-700">
+                                    <div className="flex items-end justify-between px-4 mb-2">
+                                        <div className="space-y-1">
+                                            <h2 className="text-2xl font-semibold tracking-tight text-[#1D1D1F]">
+                                                {issue.title}
+                                            </h2>
+                                        </div>
+                                    </div>
+                                    <div className="relative p-2 rounded-[2.5rem] bg-white/40 backdrop-blur-2xl border border-white shadow-[0_20px_40px_rgba(0,0,0,0.03)] overflow-x-auto no-scrollbar">
+                                        <div className="flex items-center p-2 gap-2 min-w-max">
+                                            {trackHistory.map((status, idx) => {
+                                                const isLast = idx === trackHistory.length - 1;
+                                                const isRepeat = trackHistory.slice(0, idx).includes(status);
+                                                const seqOrder = MASTER_SEQUENCE.indexOf(status) + 1;
+
+                                                return (
+                                                    <div key={`${status}-${idx}`} className="flex items-center gap-3">
+                                                        <div className={`
+                                  relative min-w-47.5 p-2 rounded-[1.8rem] transition-all duration-500
+                                  border shadow-sm
+                                  ${isLast
+                                                                ? 'bg-white border-[#F2E8E4] scale-105 z-20 shadow-[0_12px_24px_rgba(0,0,0,0.05)]'
+                                                                : isRepeat
+                                                                    ? 'bg-[#FDFBF9] border-[#EAE2DF]'
+                                                                    : 'bg-white/40 border-transparent hover:border-black/5'}
+                                `}>
+
+                                                            {/* Entry Indicator */}
+                                                            <div className="flex justify-between items-center mb-4">
+                                                                <span className={`text-[9px] font-black tracking-widest ${isLast ? 'text-[#FF7A51]' : 'text-black/20'}`}>
+                                                                    STEP {idx + 1}
+                                                                </span>
+                                                                {isRepeat && (
+                                                                    <div className="flex items-center gap-1 px-1.5 py-0.5 bg-[#FFF4F0] rounded-md border border-[#FCEEE9]">
+                                                                        <RotateCcw size={10} className="text-[#FF7A51]" />
+                                                                        <span className="text-[8px] font-bold text-[#FF7A51]">REVISIT</span>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            <h3 className={`text-[13px] font-bold tracking-tight uppercase mb-1 ${isLast ? 'text-black' : 'text-black/60'}`}>
+                                                                {status}
+                                                            </h3>
+                                                            <div className="flex items-center gap-1.5">
+                                                                <div className={`w-1 h-1 rounded-full ${isLast ? 'bg-[#FF7A51]' : 'bg-black/10'}`} />
+                                                                <span className="text-[10px] font-medium text-black/30">
+                                                                    Phase {seqOrder}
+                                                                </span>
+                                                            </div>
+                                                            {isLast && (
+                                                                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-[#FF7A51] rounded-full blur-[2px]" />
+                                                            )}
+                                                        </div>
+                                                        {!isLast && (
+                                                            <ArrowRight className="text-black shrink-0" size={16} strokeWidth={1.5} />
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    {/* UX Summary Bar */}
+                                    <div className="mt-5 px-6 flex items-center justify-between">
+                                        <div className="flex items-center gap-6">
+                                            <div className="flex items-center gap-2 group">
+                                                <div className="w-2 h-2 rounded-full bg-[#FF7A51] group-hover:animate-ping" />
+                                                <span className="text-[10px] font-bold text-black/40 uppercase tracking-widest">Active Processing</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Activity size={12} className="text-black/20" />
+                                                <span className="text-[10px] font-bold text-black/40 uppercase tracking-widest">{trackHistory.length} Movement Logs</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="text-[10px] font-medium text-black/30 italic">
+                                            Sequential tracking enabled
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })
+                    )}
+                </div>
+            </div>
+        );
+    };
+
+
     return (
         <div className="space-y-12">
             {/* Sprint Manager */}
@@ -256,7 +404,25 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
             {/* MAIN CONTENT */}
             {isMobile ? (
                 /* Mobile: Only Table */
-                <IssuesTable />
+                // <IssuesTable />
+                <Tabs defaultValue="table">
+                    <TabsList className="inline-flex h-11 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 p-1">
+                        <TabsTrigger value="table" className="px-7 py-2 text-sm font-medium rounded-full data-[state=active]:bg-black data-[state=active]:text-white dark:data-[state=active]:bg-white dark:data-[state=active]:text-black transition-all">
+                            Table
+                        </TabsTrigger>
+                        <TabsTrigger value="cycle" className="px-7 py-2 text-sm font-medium rounded-full data-[state=active]:bg-black data-[state=active]:text-white dark:data-[state=active]:bg-white dark:data-[state=active]:text-black transition-all">
+                            Material Life Cycle
+                        </TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="table">
+                        {/* Overview Table */}
+                        <IssuesTable />
+                    </TabsContent>
+                    <TabsContent value="cycle">
+                        {/* Material LifeCycle */}
+                        <IssueLifecycleDisplay />
+                    </TabsContent>
+                </Tabs>
             ) : (
                 <Tabs defaultValue="kanban">
                     <TabsList className="inline-flex h-11 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 p-1">
@@ -265,6 +431,9 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
                         </TabsTrigger>
                         <TabsTrigger value="table" className="px-7 py-2 text-sm font-medium rounded-full data-[state=active]:bg-black data-[state=active]:text-white dark:data-[state=active]:bg-white dark:data-[state=active]:text-black transition-all">
                             Table
+                        </TabsTrigger>
+                        <TabsTrigger value="cycle" className="px-7 py-2 text-sm font-medium rounded-full data-[state=active]:bg-black data-[state=active]:text-white dark:data-[state=active]:bg-white dark:data-[state=active]:text-black transition-all">
+                            Material Life Cycle
                         </TabsTrigger>
                     </TabsList>
                     <TabsContent value="kanban">
@@ -351,6 +520,10 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
                             <h2 className="text-lg font-semibold text-gray-900 mb-5">All Issues</h2>
                             <IssuesTable />
                         </div>
+                    </TabsContent>
+                    <TabsContent value="cycle">
+                        {/* Material LifeCycle */}
+                        <IssueLifecycleDisplay />
                     </TabsContent>
                 </Tabs>
 

@@ -1,0 +1,1 @@
+ALTER TABLE "issues" ADD COLUMN "track" "issue_status"[] DEFAULT '{}' NOT NULL;

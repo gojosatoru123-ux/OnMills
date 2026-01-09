@@ -22,6 +22,20 @@
       "when": 1767878035402,
       "tag": "0002_zippy_triathlon",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1767980660633,
+      "tag": "0003_amusing_ego",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1767981769139,
+      "tag": "0004_nappy_speed_demon",
+      "breakpoints": true
     }
   ]
 }

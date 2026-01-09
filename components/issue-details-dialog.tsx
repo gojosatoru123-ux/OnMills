@@ -27,6 +27,7 @@ import statuses from "@/data/status.json";
 import { deleteIssue, updateIssue } from "@/actions/issues";
 import { IssueType, UserType } from "@/lib/types";
 import { DetailedIssue } from "@/app/(main)/project/_components/sprint-board";
+import { getOrganizationUsers } from "@/actions/organization";
 
 const priorityOptions = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 
@@ -49,8 +50,10 @@ export default function IssueDetailsDialog({
 }: Props) {
     const [status, setStatus] = useState(issue.status);
     const [priority, setPriority] = useState(issue.priority);
+    const [assigneeId, setAssigneeId] = useState(issue.assigneeId);
+    const [track,setTrack] = useState(issue.track);
     const { user } = useUser();
-    const { membership } = useOrganization();
+    const { organization, membership } = useOrganization();
     const router = useRouter();
     const pathname = usePathname();
 
@@ -76,13 +79,29 @@ export default function IssueDetailsDialog({
 
     const handleStatusChange = async (newStatus: IssueType['status']) => {
         setStatus(newStatus);
-        updateIssueFn(issue.id, { status: newStatus, priority });
+        const newTrack = [...track,newStatus];
+        setTrack(newTrack);
+        updateIssueFn(issue.id, { status: newStatus, priority, assigneeId, track: newTrack });
     };
 
     const handlePriorityChange = async (newPriority: IssueType['priority']) => {
         setPriority(newPriority);
-        updateIssueFn(issue.id, { status, priority: newPriority });
+        updateIssueFn(issue.id, { status, priority: newPriority, assigneeId, track });
     };
+
+    const handleAssigneeChange = async (newAssigneeId: UserType['id']) => {
+        setAssigneeId(newAssigneeId);
+        updateIssueFn(issue.id, { status, priority, assigneeId: newAssigneeId, track });
+    }
+
+    const { loading:gettingOrganizationUserLoading,fn: fetchUsers, data: users } = useFetch(getOrganizationUsers);
+    console.log(organization?.id)
+
+    useEffect(() => {
+        if (isOpen && organization?.id) {
+            fetchUsers(organization?.id);
+        }
+    }, [isOpen, organization?.id])
 
     useEffect(() => {
         if (deleted) {
@@ -121,7 +140,7 @@ export default function IssueDetailsDialog({
                         )}
                     </div>
                 </DialogHeader>
-                {(updateLoading || deleteLoading) && (
+                {(updateLoading || deleteLoading || gettingOrganizationUserLoading) && (
                     <BarLoader width={"100%"} color="#36d7b7" />
                 )}
                 {issue.project?.name && (
@@ -184,7 +203,18 @@ export default function IssueDetailsDialog({
                     <div className="flex justify-between">
                         <div className="flex flex-col gap-2">
                             <h4 className="font-semibold">Assignee</h4>
-                            <UserAvatar user={issue.assignee} />
+                            <Select value={assigneeId || undefined} onValueChange={handleAssigneeChange}>
+                                <SelectTrigger className="w-full h-11 rounded-lg border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                    <SelectValue placeholder="Status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {users?.map((option) => (
+                                        <SelectItem key={option.id} value={option.id}>
+                                            <UserAvatar user={option} />
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
                         <div className="flex flex-col gap-2">
                             <h4 className="font-semibold">Reporter</h4>

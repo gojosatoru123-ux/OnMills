@@ -122,7 +122,7 @@ export async function deleteIssue(issueId:IssueType['id']) {
 }
 
 
-export async function updateIssue(issueId:IssueType['id'], data:{status:IssueType['status'], priority:IssueType['priority']}) {
+export async function updateIssue(issueId:IssueType['id'], data:{status:IssueType['status'], priority:IssueType['priority'], assigneeId:IssueType['assigneeId'], track:IssueType['track']}) {
     const { userId, orgId } = await auth();
 
     if (!userId || !orgId) {
@@ -152,6 +152,8 @@ export async function updateIssue(issueId:IssueType['id'], data:{status:IssueTyp
         await db.update(issues).set({
                 status:data.status,
                 priority:data.priority,
+                assigneeId:data.assigneeId,
+                track: data.track
         }).where(eq(issues.id,issueId))
 
         const updatedIssue = await db.query.issues.findFirst({
@@ -168,7 +170,7 @@ export async function updateIssue(issueId:IssueType['id'], data:{status:IssueTyp
     }
 }
 
-export async function updateIssueOrder(updatedIssues:{status:IssueType['status'],order:IssueType['order'], id:IssueType['id']}[]) {
+export async function updateIssueOrder(updatedIssues:{status:IssueType['status'],order:IssueType['order'], id:IssueType['id'], track:IssueType['status'][]}[]) {
     const { userId, orgId } = await auth();
 
     if (!userId || !orgId) {
@@ -179,10 +181,12 @@ export async function updateIssueOrder(updatedIssues:{status:IssueType['status']
             await tx.update(issues).set({
                 status: issue.status,
                 order: issue.order,
+                track: issue.track,
                 updatedAt: new Date(),
             }).where(eq(issues.id, issue.id))
         }
     })
+    //(issue.track ?? []) This ensures that if the column is empty (null), the code sees [] instead
 
     return { success: true };
 }
