@@ -42,25 +42,86 @@ const UserIssues = async ({ userId }:Props) => {
             <Tabs defaultValue="assigned" className="w-full">
                 {/* 1. APPLE-STYLE SEGMENTED CONTROL */}
                 <div className="flex items-center justify-between mb-8">
-                    <TabsList className="bg-[#FAF9F6] border border-[#F2F0EB] p-1.5 rounded-4xl h-auto shadow-inner">
-                        <TabsTrigger 
-                            value="assigned" 
-                            className="px-8 py-2.5 rounded-[14px] text-[13px] font-bold tracking-tight data-[state=active]:bg-white data-[state=active]:text-[#1D1D1F] data-[state=active]:shadow-lg transition-all flex items-center gap-2"
-                        >
-                            <Inbox size={14} />
-                            Assigned Directives
-                            <span className="ml-2 px-1.5 py-0.5 bg-[#FF7A5C] text-white text-[10px] rounded-md">
-                                {assignedIssues.length}
-                            </span>
-                        </TabsTrigger>
-                        <TabsTrigger 
-                            value="reported" 
-                            className="px-8 py-2.5 rounded-[14px] text-[13px] font-bold tracking-tight data-[state=active]:bg-white data-[state=active]:text-[#1D1D1F] data-[state=active]:shadow-lg transition-all flex items-center gap-2"
-                        >
-                            <Send size={14} />
-                            Issued by You
-                        </TabsTrigger>
-                    </TabsList>
+                <TabsList className="
+        flex 
+        w-full 
+        max-w-max 
+        sm:w-auto 
+        items-center 
+        justify-start 
+        overflow-x-auto 
+        overflow-y-hidden 
+        scrollbar-hide 
+        bg-white/10 
+        backdrop-blur-2xl 
+        border border-white/20 
+        p-1.5 
+        rounded-full 
+        h-auto 
+        shadow-[0_8px_32px_0_rgba(31,38,135,0.07)]
+      ">
+        <TabsTrigger 
+          value="assigned" 
+          className="
+            shrink-0 
+            px-4 
+            sm:px-8 
+            py-2.5 
+            rounded-full 
+            text-[13px] 
+            font-bold 
+            tracking-tight 
+            text-[#1D1D1F]/70 
+            data-[state=active]:bg-white/90 
+            data-[state=active]:text-[#1D1D1F] 
+            data-[state=active]:shadow-[0_0_15px_rgba(255,122,92,0.3)] 
+            transition-all 
+            flex 
+            items-center 
+            gap-2
+          "
+        >
+          <Inbox size={14} className="text-[#FF7A5C]" />
+          <span className="whitespace-nowrap">Assigned Directives</span>
+          <span className="
+            ml-1 
+            px-2 
+            py-0.5 
+            bg-[#FF7A5C] 
+            text-white 
+            text-[10px] 
+            rounded-full 
+            animate-pulse-slow
+          ">
+            {assignedIssues.length}
+          </span>
+        </TabsTrigger>
+
+        <TabsTrigger 
+          value="reported" 
+          className="
+            shrink-0 
+            px-4 
+            sm:px-8 
+            py-2.5 
+            rounded-full 
+            text-[13px] 
+            font-bold 
+            tracking-tight 
+            text-[#1D1D1F]/70 
+            data-[state=active]:bg-white/90 
+            data-[state=active]:text-[#1D1D1F] 
+            data-[state=active]:shadow-lg 
+            transition-all 
+            flex 
+            items-center 
+            gap-2
+          "
+        >
+          <Send size={14} />
+          <span className="whitespace-nowrap">Issued by You</span>
+        </TabsTrigger>
+      </TabsList>
 
                     <div className="hidden md:flex items-center gap-2 text-[#86868B]">
                         <LayoutGrid size={16} />
