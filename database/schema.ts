@@ -1,11 +1,11 @@
 import { relations } from "drizzle-orm";
-import { boolean, index, integer, pgEnum, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import { boolean, index, integer, pgEnum, pgTable, real, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 
 
 export const sprintStatusEnum = pgEnum("sprint_status", ["PLANNED", "ACTIVE", "COMPLETED"]);
 // export const issueStatusEnum = pgEnum("issue_status", ["TODO", "PURCHASE", "STORE", "BUFFING", "PAINTING", "WINDING", "ASSEMBLY", "PACKING", "SALES"]);
 export const issuePriorityEnum = pgEnum("issue_priority", ["LOW", "MEDIUM", "HIGH", "URGENT"]);
-export const quantityUnitEnum = pgEnum("quantity_unit",["PIECES","KILOGRAM","UNITS","GRAM","TONNE"]);
+export const quantityUnitEnum = pgEnum("quantity_unit",["PIECES", "UNITS", "SETS" , "PACKETS", "KILOGRAM","GRAM","TONNE","LITRES", "METERS", "FEET", "INCHES", "SQUARE_METERS", "CUBIC_METERS"]);
 
 export const userTable = pgTable('userTable', {
     id: uuid('id').primaryKey().defaultRandom(),
@@ -34,6 +34,7 @@ export const sprintTable = pgTable("sprintTable", {
     name: text("name").notNull(),
     startDate: timestamp("start_date").notNull(),
     endDate: timestamp("end_date").notNull(),
+    isLongSprint: boolean("is_long_sprint").notNull().default(false),
     status: sprintStatusEnum("status").default("PLANNED").notNull(),
     projectId: uuid("project_id").notNull().references(() => projectTable.id, { onDelete: "cascade" }),
     createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -43,9 +44,14 @@ export const sprintTable = pgTable("sprintTable", {
 export const itemTable = pgTable("itemTable",{
     id: uuid("id").primaryKey().defaultRandom(),
     name: text("name").notNull(),
-    reorderValue: integer("reorder_value").notNull().default(0),
+    reorderValue: real("reorder_value").notNull().default(0),
     projectId: uuid("project_id").notNull().references(()=> projectTable.id, {onDelete:"cascade"}),
-})
+    itemUnit: quantityUnitEnum("item_unit").notNull().default('PIECES'),
+    usingQuantity: real("using_quantity").notNull().default(1),
+    usingUnit: quantityUnitEnum("using_unit").notNull().default('PIECES')
+}, (t)=>[
+    unique().on(t.projectId, t.name) // No duplicate item names in the same project
+])
 
 export const projectStatusTable = pgTable('projectStatusTable', {
     id: uuid('id').primaryKey().defaultRandom(),
@@ -75,8 +81,8 @@ export const issues = pgTable("issues", {
     track: uuid("track").array().notNull().default([]),
 
     // New field for inventory tracking
-    quantity: integer("quantity").notNull().default(1),
-    unit: quantityUnitEnum("unit").notNull().default('PIECES'),
+    quantity: real("quantity").notNull().default(1),
+    // unit: quantityUnitEnum("unit").notNull().default('PIECES'),
     parentId: uuid("parent_id").references(():any=>issues.id,{onDelete:"cascade"}), // Allows splitting batches by self referencing
     isSplit: boolean("is_split").notNull().default(false) // Flag to indicate if this issue was a result of a split
 }, (t) => [

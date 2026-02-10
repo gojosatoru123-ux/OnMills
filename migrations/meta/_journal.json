@@ -5,22 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1769677402240,
-      "tag": "0000_petite_jane_foster",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1769677485263,
-      "tag": "0001_absurd_mikhail_rasputin",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1769684758219,
-      "tag": "0002_slippery_cargill",
+      "when": 1770662576971,
+      "tag": "0000_faulty_blazing_skull",
       "breakpoints": true
     }
   ]

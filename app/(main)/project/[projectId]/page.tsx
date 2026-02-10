@@ -89,6 +89,7 @@ const Project = async ({ params }:Props) => {
                   projectId={projectId}
                   orgId={project.organizationId}
                   statuses = {projectStages}
+                  projectItems = {projectItems}
                 />}
              </div>
           </div>

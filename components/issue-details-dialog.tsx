@@ -251,7 +251,7 @@ export default function IssueDetailsDialog({
                                         const val = e.target.value;
                                         setQuantity(val === "" ? 0 : Number(val));
                                     }} />
-                                    <span>{issue.unit}</span>
+                                    <span>{issue.item.itemUnit}</span>
                                 </div>
                             </div>
 
@@ -345,7 +345,7 @@ export default function IssueDetailsDialog({
                     <DialogHeader>
                         <DialogTitle>Confirm Sale</DialogTitle>
                         <DialogDescription>
-                            Do you want to process the sale for {quantity} {issue.unit} of this item?
+                            Do you want to process the sale for {quantity} {issue.item.itemUnit} of this item?
                             {quantity === issue.quantity ? " This will remove the item from active list." : ""}
                         </DialogDescription>
                     </DialogHeader>

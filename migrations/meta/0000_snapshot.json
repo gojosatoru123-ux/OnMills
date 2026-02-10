@@ -1,5 +1,5 @@
 {
-  "id": "27099334-8391-4116-bb5a-97aad8a9bdef",
+  "id": "a07f7c7c-3ecd-4323-b682-9f9fa42d09ac",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -93,18 +93,10 @@
         },
         "quantity": {
           "name": "quantity",
-          "type": "integer",
+          "type": "real",
           "primaryKey": false,
           "notNull": true,
           "default": 1
-        },
-        "unit": {
-          "name": "unit",
-          "type": "quantity_unit",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'PIECES'"
         },
         "parent_id": {
           "name": "parent_id",
@@ -178,10 +170,10 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "issues_status_project_stages_id_fk": {
-          "name": "issues_status_project_stages_id_fk",
+        "issues_status_projectStatusTable_id_fk": {
+          "name": "issues_status_projectStatusTable_id_fk",
           "tableFrom": "issues",
-          "tableTo": "project_stages",
+          "tableTo": "projectStatusTable",
           "columnsFrom": [
             "status"
           ],
@@ -282,7 +274,7 @@
         },
         "reorder_value": {
           "name": "reorder_value",
-          "type": "integer",
+          "type": "real",
           "primaryKey": false,
           "notNull": true,
           "default": 0
@@ -292,6 +284,29 @@
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
+        },
+        "item_unit": {
+          "name": "item_unit",
+          "type": "quantity_unit",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PIECES'"
+        },
+        "using_quantity": {
+          "name": "using_quantity",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "using_unit": {
+          "name": "using_unit",
+          "type": "quantity_unit",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PIECES'"
         }
       },
       "indexes": {},
@@ -311,13 +326,22 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "itemTable_project_id_name_unique": {
+          "name": "itemTable_project_id_name_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "project_id",
+            "name"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.project_stages": {
-      "name": "project_stages",
+    "public.projectStatusTable": {
+      "name": "projectStatusTable",
       "schema": "",
       "columns": {
         "id": {
@@ -339,6 +363,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
         "order": {
           "name": "order",
           "type": "integer",
@@ -348,9 +378,9 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "project_stages_project_id_projectTable_id_fk": {
-          "name": "project_stages_project_id_projectTable_id_fk",
-          "tableFrom": "project_stages",
+        "projectStatusTable_project_id_projectTable_id_fk": {
+          "name": "projectStatusTable_project_id_projectTable_id_fk",
+          "tableFrom": "projectStatusTable",
           "tableTo": "projectTable",
           "columnsFrom": [
             "project_id"
@@ -364,12 +394,20 @@
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "project_stages_project_id_name_unique": {
-          "name": "project_stages_project_id_name_unique",
+        "projectStatusTable_project_id_name_unique": {
+          "name": "projectStatusTable_project_id_name_unique",
           "nullsNotDistinct": false,
           "columns": [
             "project_id",
             "name"
+          ]
+        },
+        "projectStatusTable_project_id_order_unique": {
+          "name": "projectStatusTable_project_id_order_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "project_id",
+            "order"
           ]
         }
       },
@@ -472,6 +510,13 @@
           "type": "timestamp",
           "primaryKey": false,
           "notNull": true
+        },
+        "is_long_sprint": {
+          "name": "is_long_sprint",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
         },
         "status": {
           "name": "status",
@@ -614,10 +659,18 @@
       "schema": "public",
       "values": [
         "PIECES",
-        "KILOGRAM",
         "UNITS",
+        "SETS",
+        "PACKETS",
+        "KILOGRAM",
         "GRAM",
-        "TONNE"
+        "TONNE",
+        "LITRES",
+        "METERS",
+        "FEET",
+        "INCHES",
+        "SQUARE_METERS",
+        "CUBIC_METERS"
       ]
     },
     "public.sprint_status": {

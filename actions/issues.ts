@@ -13,7 +13,7 @@ type CreateIssueDataProp={
     status: IssueType['statusId'],
     sprintId: SprintType['id'],
     quantity: IssueType['quantity'],
-    unit: IssueType['unit']
+    // unit: IssueType['unit']
 }
 
 export async function createIssue(projectId:ProjectType['id'], data:CreateIssueDataProp) {
@@ -59,7 +59,7 @@ export async function createIssue(projectId:ProjectType['id'], data:CreateIssueD
             assigneeId: data.assigneeId || null,
             order: newOrder,
             quantity: data.quantity,
-            unit: data.unit,
+            // unit: data.unit,
             track:[data.status],
         }).returning().then(res => res[0])
     

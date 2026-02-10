@@ -8,7 +8,8 @@ import { eq } from "drizzle-orm";
 type CreateSprintDataProp={
     name: SprintType['name'],
     startDate: SprintType['startDate'],
-    endDate: SprintType['endDate']
+    endDate: SprintType['endDate'],
+    isLongSprint: SprintType['isLongSprint']
 }
 export async function createSprint(projectId:ProjectType['id'], data:CreateSprintDataProp) {
     const { userId, orgId } = await auth();
@@ -30,6 +31,7 @@ export async function createSprint(projectId:ProjectType['id'], data:CreateSprin
             endDate: data.endDate,
             status: "PLANNED",
             projectId: projectId,
+            isLongSprint: data.isLongSprint
         }).returning().then(res => res[0]);
     
         return sprint;

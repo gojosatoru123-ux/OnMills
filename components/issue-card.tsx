@@ -48,7 +48,7 @@ export default function IssueCard({
               {issue.item.name}
             </h3>
             <span className="text-sm font-medium text-[#1D1D1F]/60 tabular-nums">
-              {issue.quantity} <span className="text-[10px] uppercase text-[#1D1D1F]/40">{issue.unit}</span>
+              {issue.quantity} <span className="text-[10px] uppercase text-[#1D1D1F]/40">{issue.item.itemUnit}</span>
             </span>
           </div>
 

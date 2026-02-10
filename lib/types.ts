@@ -29,6 +29,7 @@ export interface SprintType {
     name: string;
     startDate: Date;
     endDate: Date;
+    isLongSprint: boolean;
     status: 'PLANNED' | 'ACTIVE' | 'COMPLETED';
     projectId: string;
     createdAt: Date;
@@ -39,6 +40,9 @@ export interface ItemType {
     id: string;
     name: string;
     reorderValue: number;
+    itemUnit: 'PIECES' | 'UNITS' | 'SETS' | 'PACKETS' | 'KILOGRAM' | 'GRAM' | 'TONNE' | 'LITRES' | 'METERS' | 'FEET' | 'INCHES' | 'SQUARE_METERS' | 'CUBIC_METERS';
+    usingQuantity: number;
+    usingUnit: 'PIECES' | 'UNITS' | 'SETS' | 'PACKETS' | 'KILOGRAM' | 'GRAM' | 'TONNE' | 'LITRES' | 'METERS' | 'FEET' | 'INCHES' | 'SQUARE_METERS' | 'CUBIC_METERS';
     projectId: string;
 }
 
@@ -55,9 +59,8 @@ export interface IssueType {
     sprintId: string | null;
     createdAt: Date;
     updatedAt: Date;
-    track: IssueType["statusId"][];
+    track: IssueType['statusId'][];
     quantity: number;
-    unit: 'PIECES' | 'KILOGRAM' | 'UNITS' | 'GRAM' | 'TONNE';
     parentId: string | null;
     isSplit: boolean;
 }

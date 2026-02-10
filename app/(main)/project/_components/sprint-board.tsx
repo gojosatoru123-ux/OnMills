@@ -13,11 +13,12 @@ import IssueCard from "@/components/issue-card";
 import { toast } from "sonner";
 import BoardFilters from "./board-filters";
 import { Plus, CircleDot } from "lucide-react";
-import { DetailedIssue, IssueType, ProjectStatusType, ProjectType, SprintType, UserType } from "@/lib/types";
+import { DetailedIssue, IssueType, ItemType, ProjectStatusType, ProjectType, SprintType, UserType } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import IssuesTable from "@/components/issues-table";
 import IssueLifecycleDisplay from "@/components/issue-lifecycle-display";
 import Inventory from "@/components/inventory";
+import Calculator from "@/components/calculator";
 
 
 
@@ -26,9 +27,10 @@ type Props = {
     projectId: ProjectType['id'],
     orgId: ProjectType['organizationId']
     statuses: ProjectStatusType[]
+    projectItems: ItemType[]
 }
 
-const SprintBoard = ({ sprints, projectId, orgId, statuses }: Props) => {
+const SprintBoard = ({ sprints, projectId, orgId, statuses, projectItems }: Props) => {
     const [currentSprint, setCurrentSprint] = useState<SprintType>(
         sprints.find((spr) => spr.status === "ACTIVE") || sprints[0]
     );
@@ -227,6 +229,9 @@ const SprintBoard = ({ sprints, projectId, orgId, statuses }: Props) => {
                         <TabsTrigger value="inventory" className="px-7 py-2 text-sm font-medium rounded-full data-[state=active]:bg-black data-[state=active]:text-white dark:data-[state=active]:bg-white dark:data-[state=active]:text-black transition-all">
                             Inventory
                         </TabsTrigger>
+                        <TabsTrigger value="calculator" className="px-7 py-2 text-sm font-medium rounded-full data-[state=active]:bg-black data-[state=active]:text-white dark:data-[state=active]:bg-white dark:data-[state=active]:text-black transition-all">
+                            Calculator
+                        </TabsTrigger>
                     </TabsList>
                     <TabsContent value="table">
                         {/* Overview Table */}
@@ -239,6 +244,10 @@ const SprintBoard = ({ sprints, projectId, orgId, statuses }: Props) => {
                     <TabsContent value="inventory">
                         {/* Inventory */}
                         <Inventory  statuses={statuses} filteredIssues={filteredIssues} />
+                    </TabsContent>
+                    <TabsContent value="calculator">
+                        {/* Inventory */}
+                        <Calculator  statuses={statuses} filteredIssues={filteredIssues} projectItems={projectItems} />
                     </TabsContent>
                 </Tabs>
             ) : (
@@ -255,6 +264,9 @@ const SprintBoard = ({ sprints, projectId, orgId, statuses }: Props) => {
                         </TabsTrigger>
                         <TabsTrigger value="inventory" className="px-7 py-2 text-sm font-medium rounded-full data-[state=active]:bg-black data-[state=active]:text-white dark:data-[state=active]:bg-white dark:data-[state=active]:text-black transition-all">
                             Inventory
+                        </TabsTrigger>
+                        <TabsTrigger value="calculator" className="px-7 py-2 text-sm font-medium rounded-full data-[state=active]:bg-black data-[state=active]:text-white dark:data-[state=active]:bg-white dark:data-[state=active]:text-black transition-all">
+                            Calculator
                         </TabsTrigger>
                     </TabsList>
                     <TabsContent value="kanban">
@@ -353,6 +365,13 @@ const SprintBoard = ({ sprints, projectId, orgId, statuses }: Props) => {
                             <h2 className="text-lg font-semibold text-gray-900 mb-5">Inventory</h2>
                             <Inventory statuses={statuses} filteredIssues={filteredIssues} />
                         </div>
+                    </TabsContent>
+                    <TabsContent value="calculator">
+                        {/* Inventory dashbaord */}
+                        {/* <div> */}
+                            {/* <h2 className="text-lg font-semibold text-gray-900 mb-5">Calculator</h2> */}
+                            <Calculator statuses={statuses} filteredIssues={filteredIssues} projectItems={projectItems} />
+                        {/* </div> */}
                     </TabsContent>
                 </Tabs>
 
