@@ -137,32 +137,31 @@ export default function IssueDetailsDialog({
     }, [isOpen, organization?.id])
 
     useEffect(() => {
-        // Handle post-update/delete logic
         if (deleted || (updated && 'deleted' in updated)) {
             onClose();
             onDelete();
-        } else if (updated) {
-            // updated is likely IssueType (flat)
-            // We need to transform it back to DetailedIssue for the parent state
+            return; // Exit early
+        } 
+        
+        if (updated) {
+            // Type narrowing: Check if updated is the full issue object
+            const updatedIssue = updated as DetailedIssue;
             
-            // 1. Find the current status object from the prop
-            const currentStatusObject = statuses.find(s => s.id === updated.statusId);
+            const currentStatusObject = statuses.find(s => s.id === updatedIssue.statusId);
             
             if (currentStatusObject) {
-                // 2. Reconstruct the DetailedIssue shape
                 const reconstructedIssue: DetailedIssue = {
-                    ...issue,        // Keep existing nested objects (item, reporter, project, etc.)
-                    ...updated,      // Overwrite with fresh data from server (statusId, priority, etc.)
-                    status: currentStatusObject // Explicitly set the status object TypeScript is looking for
+                    ...issue,        
+                    ...updatedIssue,      
+                    status: currentStatusObject 
                 };
                 
                 onUpdate(reconstructedIssue);
             } else {
-                // Fallback if status isn't found (though it should be)
-                onUpdate(updated as unknown as DetailedIssue);
+                onUpdate(updatedIssue);
             }
         }
-    }, [deleted, updated, statuses]); // Add statuses to dependency array
+    }, [deleted, updated, statuses]);
 
     const canChange = membership?.role === "org:admin"
 

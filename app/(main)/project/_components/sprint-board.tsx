@@ -7,13 +7,13 @@ import SprintManager from "./sprint-manager";
 // import statuses from "@/data/status.json";
 import { Button } from "@/components/ui/button";
 import useFetch from "@/hooks/use-fetch";
-import { getIssuesForSprint, updateIssueOrder } from "@/actions/issues";
+import { getIssuesForSprint, updateIssue } from "@/actions/issues";
 import { BarLoader } from "react-spinners";
 import IssueCard from "@/components/issue-card";
 import { toast } from "sonner";
 import BoardFilters from "./board-filters";
 import { Plus, CircleDot } from "lucide-react";
-import { DetailedIssue, IssueType, ItemType, ProjectStatusType, ProjectType, SprintType, UserType } from "@/lib/types";
+import { DetailedIssue, IssueType, ItemType, ProjectStatusType, ProjectType, SprintType } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import IssuesTable from "@/components/issues-table";
 import IssueLifecycleDisplay from "@/components/issue-lifecycle-display";
@@ -40,7 +40,7 @@ const SprintBoard = ({ sprints, projectId, orgId, statuses, projectItems }: Prop
 
     const { loading: issuesLoading, error: issuesError, fn: fetchIssues, data: issues, setData: setIssues } = useFetch<DetailedIssue[], [string]>(getIssuesForSprint);
     const [filteredIssues, setFilteredIssues] = useState<DetailedIssue[] | null>(null);
-    const { fn: updateIssueOrderFn, loading: updateIssuesLoading } = useFetch<any, [DetailedIssue[]]>(updateIssueOrder);
+    const { fn: updateIssueFn, loading: updateIssuesLoading } = useFetch(updateIssue);
 
     useEffect(() => {
         const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -59,11 +59,16 @@ const SprintBoard = ({ sprints, projectId, orgId, statuses, projectItems }: Prop
         setFilteredIssues(newFilteredIssues);
     };
 
-    const handleIssueUpdate = (updatedItem: DetailedIssue) => {
+    const handleIssueUpdate = (updatedItem: DetailedIssue | { id: string; deleted: boolean }) => {
+        // If it was deleted/sold, remove it from the list
+        if ('deleted' in updatedItem) {
+            setIssues(prev => prev?.filter(i => i.id !== updatedItem.id) || null);
+            return;
+        }
+    
         setIssues((prevIssues: DetailedIssue[] | null) => {
             if (!prevIssues) return null;
     
-            // Check if this is an update to an existing card or a brand new one (split)
             const existingIndex = prevIssues.findIndex((i) => i.id === updatedItem.id);
     
             if (existingIndex !== -1) {
@@ -73,9 +78,8 @@ const SprintBoard = ({ sprints, projectId, orgId, statuses, projectItems }: Prop
                 return newIssues;
             } else {
                 // SCENARIO 2: A Split occurred
-                // 1. Find the parent issue and decrease its quantity locally
-                // 2. Add the brand-new issue (the split-off part) to the list
-                const updatedWithParent = prevIssues.map((item) => {
+                return prevIssues.map((item) => {
+                    // Reduce parent quantity locally
                     if (item.id === updatedItem.parentId) {
                         return {
                             ...item,
@@ -84,96 +88,55 @@ const SprintBoard = ({ sprints, projectId, orgId, statuses, projectItems }: Prop
                         };
                     }
                     return item;
-                });
-    
-                return [...updatedWithParent, updatedItem];
+                }).concat(updatedItem); // Add the new child issue
             }
         });
-        
-        // Refresh server data in background to keep stats in sync
-        // router.refresh();
     };
 
     const onDragEnd = async (result: DropResult) => {
-        // 1. Sprint Status Guards
-        if (currentSprint.status === "PLANNED") {
-            toast.warning("Start the sprint to update board");
-            return;
-        }
-        if (currentSprint.status === "COMPLETED") {
-            toast.warning("Cannot update board after sprint end");
-            return;
-        }
+        if (currentSprint.status !== "ACTIVE" || isMobile || !issues) return;
     
-        // 2. Early Exits
-        if (isMobile || !currentSprint || !issues) return;
+        const { destination, source, draggableId } = result;
     
-        const { destination, source } = result;
-    
-        if (
-            !destination ||
-            (destination.droppableId === source.droppableId && destination.index === source.index)
-        ) {
+        if (!destination || (destination.droppableId === source.droppableId && destination.index === source.index)) {
             return;
         }
     
-        // 3. Create a deep copy for manipulation
-        // Note: We use map to ensure we have a fresh array of objects to avoid mutating state directly
-        const newIssues: DetailedIssue[] = [...issues];
+        // 1. Find the moved issue
+        const movedIssue = issues.find(i => i.id === draggableId);
+        if (!movedIssue) return;
     
-        // Filter issues by column
-        const sourceItems = newIssues.filter((i) => i.statusId === source.droppableId);
-        const destItems = newIssues.filter((i) => i.statusId === destination.droppableId);
+        // 2. Optimistic Update (Local State)
+        const destinationStatus = statuses.find(s => s.id === destination.droppableId);
+        if (!destinationStatus) return;
     
-        // 4. Movement Logic
-        if (source.droppableId === destination.droppableId) {
-            // REORDERING (Same Column)
-            const [removed] = sourceItems.splice(source.index, 1);
-            sourceItems.splice(destination.index, 0, removed);
+        const updatedIssues = [...issues];
+        const itemIdx = updatedIssues.findIndex(i => i.id === draggableId);
+        
+        // Update local object for immediate UI feedback
+        updatedIssues[itemIdx] = {
+            ...movedIssue,
+            statusId: destination.droppableId,
+            status: destinationStatus,
+            track: [...(movedIssue.track || []), destination.droppableId]
+        };
     
-            // Update local order indices
-            sourceItems.forEach((item, idx) => {
-                item.order = idx;
+        setIssues(updatedIssues); // Real-time UI shift
+    
+        // 3. Selective Network Call
+        // We call updateIssue directly for just ONE item instead of updateIssueOrder
+        try {
+            await updateIssueFn(draggableId, {
+                status: destination.droppableId,
+                priority: movedIssue.priority,
+                assigneeId: movedIssue.assigneeId,
+                track: [...(movedIssue.track || []), destination.droppableId],
+                quantity: movedIssue.quantity // Dragging moves the full current quantity
             });
-        } else {
-            // MOVING (Cross Column)
-            const [movedItem] = sourceItems.splice(source.index, 1);
-            
-            // FIX: Find the actual status object for the destination column
-            // Assuming 'projectStatuses' is available in your component scope
-            const destinationStatus = statuses.find(s => s.id === destination.droppableId);
-    
-            if (!destinationStatus) {
-                console.error("Destination status not found");
-                return;
-            }
-    
-            // Logic: Update the Foreign Key ID AND the full Status Object
-            movedItem.statusId = destination.droppableId;
-            movedItem.status = destinationStatus; // This satisfies the 'DetailedIssue' type
-    
-            // Append the new status ID to the track history array
-            movedItem.track = [...(movedItem.track || []), destination.droppableId];
-    
-            destItems.splice(destination.index, 0, movedItem);
-    
-            // Re-index both affected columns
-            sourceItems.forEach((item, i) => (item.order = i));
-            destItems.forEach((item, i) => (item.order = i));
+        } catch (err) {
+            toast.error("Failed to sync status");
+            setIssues(issues); // Rollback on error
         }
-    
-        // 5. Reconstruct the full list
-        // Ensure the mapped array is explicitly typed as DetailedIssue[]
-        const updated: DetailedIssue[] = newIssues.map((item) => {
-            const found = [...sourceItems, ...destItems].find((i) => i.id === item.id);
-            return found ? { ...found } : item;
-        });
-    
-        // 6. Update State & DB
-        const sortedUpdated = updated.sort((a, b) => a.order - b.order);
-    
-        setIssues(sortedUpdated);
-        updateIssueOrderFn(sortedUpdated);
     };
 
     if (issuesError) {
