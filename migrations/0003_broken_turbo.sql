@@ -1,0 +1,1 @@
+ALTER TABLE "itemTable" ADD COLUMN "is_main_product" boolean DEFAULT false NOT NULL;

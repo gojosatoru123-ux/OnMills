@@ -7,17 +7,21 @@ import SprintManager from "./sprint-manager";
 // import statuses from "@/data/status.json";
 import { Button } from "@/components/ui/button";
 import useFetch from "@/hooks/use-fetch";
-import { getIssuesForSprint, updateIssueOrder } from "@/actions/issues";
+import { getIssuesForSprint, updateIssue } from "@/actions/issues";
 import { BarLoader } from "react-spinners";
 import IssueCard from "@/components/issue-card";
 import { toast } from "sonner";
 import BoardFilters from "./board-filters";
-import { Plus, CircleDot } from "lucide-react";
-import { DetailedIssue, IssueType, ProjectStatusType, ProjectType, SprintType, UserType } from "@/lib/types";
+import { Plus, CircleDot, MergeIcon } from "lucide-react";
+import { DetailedIssue, IssueType, ItemType, ProjectStatusType, ProjectType, SprintType, UserType } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import IssuesTable from "@/components/issues-table";
 import IssueLifecycleDisplay from "@/components/issue-lifecycle-display";
 import Inventory from "@/components/inventory";
+import Calculator from "@/components/calculator";
+import { processAssemblyDbUpdate } from "@/actions/assembly";
+import ProductionLogs from "@/components/production-logs";
+import { useRouter } from "next/navigation";
 
 
 
@@ -26,9 +30,12 @@ type Props = {
     projectId: ProjectType['id'],
     orgId: ProjectType['organizationId']
     statuses: ProjectStatusType[]
+    projectItems: ItemType[]
+    mainItemProduced: ItemType;
+    orgUsers: UserType[]
 }
 
-const SprintBoard = ({ sprints, projectId, orgId, statuses }: Props) => {
+const SprintBoard = ({ sprints, projectId, orgId, statuses, projectItems, mainItemProduced, orgUsers }: Props) => {
     const [currentSprint, setCurrentSprint] = useState<SprintType>(
         sprints.find((spr) => spr.status === "ACTIVE") || sprints[0]
     );
@@ -38,7 +45,8 @@ const SprintBoard = ({ sprints, projectId, orgId, statuses }: Props) => {
 
     const { loading: issuesLoading, error: issuesError, fn: fetchIssues, data: issues, setData: setIssues } = useFetch<DetailedIssue[], [string]>(getIssuesForSprint);
     const [filteredIssues, setFilteredIssues] = useState<DetailedIssue[] | null>(null);
-    const { fn: updateIssueOrderFn, loading: updateIssuesLoading } = useFetch<any, [DetailedIssue[]]>(updateIssueOrder);
+    const { fn: updateIssueFn, loading: updateIssuesLoading } = useFetch(updateIssue);
+    const { fn: assembleIssueFn, loading: assembleIssueLoading } = useFetch(processAssemblyDbUpdate);
 
     useEffect(() => {
         const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -57,13 +65,18 @@ const SprintBoard = ({ sprints, projectId, orgId, statuses }: Props) => {
         setFilteredIssues(newFilteredIssues);
     };
 
-    const handleIssueUpdate = (updatedItem: DetailedIssue) => {
+    const handleIssueUpdate = (updatedItem: DetailedIssue | { id: string; deleted: boolean }) => {
+        // If it was deleted/sold, remove it from the list
+        if ('deleted' in updatedItem) {
+            setIssues(prev => prev?.filter(i => i.id !== updatedItem.id) || null);
+            return;
+        }
+
         setIssues((prevIssues: DetailedIssue[] | null) => {
             if (!prevIssues) return null;
-    
-            // Check if this is an update to an existing card or a brand new one (split)
+
             const existingIndex = prevIssues.findIndex((i) => i.id === updatedItem.id);
-    
+
             if (existingIndex !== -1) {
                 // SCENARIO 1: Simple Update
                 const newIssues = [...prevIssues];
@@ -71,9 +84,8 @@ const SprintBoard = ({ sprints, projectId, orgId, statuses }: Props) => {
                 return newIssues;
             } else {
                 // SCENARIO 2: A Split occurred
-                // 1. Find the parent issue and decrease its quantity locally
-                // 2. Add the brand-new issue (the split-off part) to the list
-                const updatedWithParent = prevIssues.map((item) => {
+                return prevIssues.map((item) => {
+                    // Reduce parent quantity locally
                     if (item.id === updatedItem.parentId) {
                         return {
                             ...item,
@@ -82,96 +94,183 @@ const SprintBoard = ({ sprints, projectId, orgId, statuses }: Props) => {
                         };
                     }
                     return item;
-                });
-    
-                return [...updatedWithParent, updatedItem];
+                }).concat(updatedItem); // Add the new child issue
             }
         });
-        
-        // Refresh server data in background to keep stats in sync
-        // router.refresh();
     };
 
     const onDragEnd = async (result: DropResult) => {
-        // 1. Sprint Status Guards
-        if (currentSprint.status === "PLANNED") {
-            toast.warning("Start the sprint to update board");
+        if (currentSprint.status !== "ACTIVE" || isMobile || !issues) return;
+
+        const { destination, source, draggableId } = result;
+
+        if (!destination || (destination.droppableId === source.droppableId && destination.index === source.index)) {
             return;
         }
-        if (currentSprint.status === "COMPLETED") {
-            toast.warning("Cannot update board after sprint end");
-            return;
-        }
-    
-        // 2. Early Exits
-        if (isMobile || !currentSprint || !issues) return;
-    
-        const { destination, source } = result;
-    
-        if (
-            !destination ||
-            (destination.droppableId === source.droppableId && destination.index === source.index)
-        ) {
-            return;
-        }
-    
-        // 3. Create a deep copy for manipulation
-        // Note: We use map to ensure we have a fresh array of objects to avoid mutating state directly
-        const newIssues: DetailedIssue[] = [...issues];
-    
-        // Filter issues by column
-        const sourceItems = newIssues.filter((i) => i.statusId === source.droppableId);
-        const destItems = newIssues.filter((i) => i.statusId === destination.droppableId);
-    
-        // 4. Movement Logic
-        if (source.droppableId === destination.droppableId) {
-            // REORDERING (Same Column)
-            const [removed] = sourceItems.splice(source.index, 1);
-            sourceItems.splice(destination.index, 0, removed);
-    
-            // Update local order indices
-            sourceItems.forEach((item, idx) => {
-                item.order = idx;
+
+        // 1. Find the moved issue
+        const movedIssue = issues.find(i => i.id === draggableId);
+        if (!movedIssue) return;
+
+        // 2. Optimistic Update (Local State)
+        const destinationStatus = statuses.find(s => s.id === destination.droppableId);
+        if (!destinationStatus) return;
+
+        const updatedIssues = [...issues];
+        const itemIdx = updatedIssues.findIndex(i => i.id === draggableId);
+
+        // Update local object for immediate UI feedback
+        updatedIssues[itemIdx] = {
+            ...movedIssue,
+            statusId: destination.droppableId,
+            status: destinationStatus,
+            track: [...(movedIssue.track || []), destination.droppableId]
+        };
+
+        setIssues(updatedIssues); // Real-time UI shift
+
+        // 3. Selective Network Call
+        // We call updateIssue directly for just ONE item instead of updateIssueOrder
+        try {
+            await updateIssueFn(draggableId, {
+                status: destination.droppableId,
+                priority: movedIssue.priority,
+                assigneeId: movedIssue.assigneeId,
+                track: [...(movedIssue.track || []), destination.droppableId],
+                quantity: movedIssue.quantity // Dragging moves the full current quantity
             });
-        } else {
-            // MOVING (Cross Column)
-            const [movedItem] = sourceItems.splice(source.index, 1);
-            
-            // FIX: Find the actual status object for the destination column
-            // Assuming 'projectStatuses' is available in your component scope
-            const destinationStatus = statuses.find(s => s.id === destination.droppableId);
-    
-            if (!destinationStatus) {
-                console.error("Destination status not found");
-                return;
-            }
-    
-            // Logic: Update the Foreign Key ID AND the full Status Object
-            movedItem.statusId = destination.droppableId;
-            movedItem.status = destinationStatus; // This satisfies the 'DetailedIssue' type
-    
-            // Append the new status ID to the track history array
-            movedItem.track = [...(movedItem.track || []), destination.droppableId];
-    
-            destItems.splice(destination.index, 0, movedItem);
-    
-            // Re-index both affected columns
-            sourceItems.forEach((item, i) => (item.order = i));
-            destItems.forEach((item, i) => (item.order = i));
+        } catch (err) {
+            toast.error("Failed to sync status");
+            setIssues(issues); // Rollback on error
         }
-    
-        // 5. Reconstruct the full list
-        // Ensure the mapped array is explicitly typed as DetailedIssue[]
-        const updated: DetailedIssue[] = newIssues.map((item) => {
-            const found = [...sourceItems, ...destItems].find((i) => i.id === item.id);
-            return found ? { ...found } : item;
+    };
+
+    /**
+ * Merges assembly items into a product, handling complex unit conversions.
+ * Ensures that stock is deducted correctly based on Stock Unit vs Using Unit.
+ */
+    /**
+     * Calculates the maximum possible units that can be assembled
+     * and updates the filteredIssues by consuming those materials.
+     */
+    const Assemble = async (filteredIssues: DetailedIssue[]) => {
+        // 1. Setup Status & Item IDs
+        const assemblyStatusId = statuses.find((i) => i.key === "ASSEMBLY")?.id;
+        const assemblyStatusObj = statuses.find((i) => i.id === assemblyStatusId);
+
+        if (!assemblyStatusId || !assemblyStatusObj) {
+            return toast.error("Assembly status configuration missing.");
+        }
+
+        const assemblyIssues = filteredIssues?.filter(
+            (issue) => issue.statusId === assemblyStatusId
+        ) || [];
+
+        // 2. Yield Math
+        const capacities = projectItems.map((itemDef) => {
+            const totalStock = assemblyIssues
+                .filter((issue) => issue.itemId === itemDef.id)
+                .reduce((sum, issue) => sum + issue.quantity, 0);
+
+            let factor = 1;
+            if (itemDef.itemUnit === "KILOGRAM" && itemDef.usingUnit === "GRAM") factor = 1000;
+            if (itemDef.itemUnit === "METERS" && itemDef.usingUnit === "INCHES") factor = 39.3701;
+            if (itemDef.itemUnit === "TONNE" && itemDef.usingUnit === "KILOGRAM") factor = 1000;
+            if (itemDef.itemUnit === "FEET" && itemDef.usingUnit === "INCHES") factor = 12;
+
+            return {
+                itemId: itemDef.id,
+                maxPossible: Math.floor((totalStock * factor) / (itemDef.usingQuantity || 1)),
+            };
         });
-    
-        // 6. Update State & DB
-        const sortedUpdated = updated.sort((a, b) => a.order - b.order);
-    
-        setIssues(sortedUpdated);
-        updateIssueOrderFn(sortedUpdated);
+
+        const totalCanAssemble = Math.min(...capacities.map((c) => c.maxPossible));
+
+        if (totalCanAssemble <= 0) {
+            return toast.error("Insufficient materials to produce 1 unit.");
+        }
+
+        // 3. Local Consumption Logic
+        let localMasterCopy = JSON.parse(JSON.stringify(issues || []));
+        const toUpdate: { id: string; quantity: number }[] = [];
+        const toDelete: string[] = [];
+
+        projectItems.forEach((itemDef) => {
+            let amountNeeded = totalCanAssemble * itemDef.usingQuantity;
+            const batches = localMasterCopy.filter(
+                (i: any) => i.itemId === itemDef.id && i.statusId === assemblyStatusId
+            );
+
+            for (let batch of batches) {
+                if (amountNeeded <= 0) break;
+                let factor = 1;
+                if (itemDef.itemUnit === "KILOGRAM" && itemDef.usingUnit === "GRAM") factor = 1000;
+                if (itemDef.itemUnit === "METERS" && itemDef.usingUnit === "INCHES") factor = 39.3701;
+
+                let available = batch.quantity * factor;
+                if (available > amountNeeded) {
+                    batch.quantity -= amountNeeded / factor;
+                    toUpdate.push({ id: batch.id, quantity: batch.quantity });
+                    amountNeeded = 0;
+                } else {
+                    amountNeeded -= available;
+                    batch.quantity = 0;
+                    toDelete.push(batch.id);
+                }
+            }
+        });
+
+        // 4. Server Sync
+        const sprintId = currentSprint.id;
+
+        // Capture the return value of the useFetch function
+        const result = await assembleIssueFn(
+            toUpdate,
+            toDelete,
+            projectId,
+            { quantityProduced: totalCanAssemble, sprintId },
+            mainItemProduced,
+            assemblyStatusId
+        ) as any;
+
+        // 5. State Reconciliation
+        if (result?.success && result.data) {
+            // HYDRATION: Ensure the new issue is fully formed for the Vision Pro UI
+            const hydratedNewIssue = {
+                ...result.data,
+                item: result.data.item || mainItemProduced,
+                status: result.data.status || assemblyStatusObj,
+            };
+
+            // A. Update Master Issues (Persistent state)
+            setIssues((prev) => {
+                if (!prev) return [hydratedNewIssue];
+                const remaining = prev.filter((i) => !toDelete.includes(i.id));
+                const updated = remaining.map((i) => {
+                    const match = toUpdate.find((u) => u.id === i.id);
+                    return match ? { ...i, quantity: match.quantity } : i;
+                });
+                return [...updated, hydratedNewIssue];
+            });
+
+            // B. Update Filtered View (Instant Kanban reflection)
+            setFilteredIssues((prevFiltered) => {
+                if (!prevFiltered) return [hydratedNewIssue];
+                const remaining = prevFiltered.filter((i) => !toDelete.includes(i.id));
+                const updated = remaining.map((i) => {
+                    const match = toUpdate.find((u) => u.id === i.id);
+                    return match ? { ...i, quantity: match.quantity } : i;
+                }).filter(i => i.quantity > 0.0001); // Purge empty cards
+
+                return [...updated, hydratedNewIssue];
+            });
+
+            toast.success(`Successfully assembled ${totalCanAssemble} products.`);
+        } else {
+            // If the code hits here, it means the server failed or result was null
+            console.error("Assembly Sync Error:", result);
+            toast.error(result?.error || "Failed to update board locally.");
+        }
     };
 
     if (issuesError) {
@@ -193,6 +292,7 @@ const SprintBoard = ({ sprints, projectId, orgId, statuses }: Props) => {
                         setSprint={setCurrentSprint}
                         sprints={sprints}
                         projectId={projectId}
+                        orgUsers={orgUsers}
                     />
                 </div>
             )}
@@ -206,7 +306,7 @@ const SprintBoard = ({ sprints, projectId, orgId, statuses }: Props) => {
                 </div>
             </div>
 
-            {(issuesLoading || updateIssuesLoading) && (
+            {(issuesLoading || updateIssuesLoading || assembleIssueLoading) && (
                 <div className="py-4">
                     <BarLoader width="100%" color="#007AFF" height={2} />
                 </div>
@@ -227,6 +327,12 @@ const SprintBoard = ({ sprints, projectId, orgId, statuses }: Props) => {
                         <TabsTrigger value="inventory" className="px-7 py-2 text-sm font-medium rounded-full data-[state=active]:bg-black data-[state=active]:text-white dark:data-[state=active]:bg-white dark:data-[state=active]:text-black transition-all">
                             Inventory
                         </TabsTrigger>
+                        <TabsTrigger value="calculator" className="px-7 py-2 text-sm font-medium rounded-full data-[state=active]:bg-black data-[state=active]:text-white dark:data-[state=active]:bg-white dark:data-[state=active]:text-black transition-all">
+                            Calculator
+                        </TabsTrigger>
+                        <TabsTrigger value="logs" className="px-7 py-2 text-sm font-medium rounded-full data-[state=active]:bg-black data-[state=active]:text-white dark:data-[state=active]:bg-white dark:data-[state=active]:text-black transition-all">
+                            Production Logs
+                        </TabsTrigger>
                     </TabsList>
                     <TabsContent value="table">
                         {/* Overview Table */}
@@ -238,7 +344,14 @@ const SprintBoard = ({ sprints, projectId, orgId, statuses }: Props) => {
                     </TabsContent>
                     <TabsContent value="inventory">
                         {/* Inventory */}
-                        <Inventory  statuses={statuses} filteredIssues={filteredIssues} />
+                        <Inventory statuses={statuses} filteredIssues={filteredIssues} mainItemProduced={mainItemProduced} />
+                    </TabsContent>
+                    <TabsContent value="calculator">
+                        {/* Inventory */}
+                        <Calculator statuses={statuses} filteredIssues={filteredIssues} projectItems={projectItems} />
+                    </TabsContent>
+                    <TabsContent value="logs">
+                        <ProductionLogs sprintId={currentSprint.id} />
                     </TabsContent>
                 </Tabs>
             ) : (
@@ -256,6 +369,12 @@ const SprintBoard = ({ sprints, projectId, orgId, statuses }: Props) => {
                         <TabsTrigger value="inventory" className="px-7 py-2 text-sm font-medium rounded-full data-[state=active]:bg-black data-[state=active]:text-white dark:data-[state=active]:bg-white dark:data-[state=active]:text-black transition-all">
                             Inventory
                         </TabsTrigger>
+                        <TabsTrigger value="calculator" className="px-7 py-2 text-sm font-medium rounded-full data-[state=active]:bg-black data-[state=active]:text-white dark:data-[state=active]:bg-white dark:data-[state=active]:text-black transition-all">
+                            Calculator
+                        </TabsTrigger>
+                        <TabsTrigger value="logs" className="px-7 py-2 text-sm font-medium rounded-full data-[state=active]:bg-black data-[state=active]:text-white dark:data-[state=active]:bg-white dark:data-[state=active]:text-black transition-all">
+                            Production logs
+                        </TabsTrigger>
                     </TabsList>
                     <TabsContent value="kanban">
                         {/* Kanban Board */}
@@ -265,7 +384,7 @@ const SprintBoard = ({ sprints, projectId, orgId, statuses }: Props) => {
                                 <div className="inline-flex gap-8 min-w-max">
                                     <DragDropContext onDragEnd={onDragEnd}>
                                         {statuses.map((column) => {
-                                            const columnIssues = filteredIssues?.filter(i => i.statusId === column.id) || [];
+                                            const columnIssues = filteredIssues?.filter(i => i && i.statusId === column.id) || [];
                                             return (
                                                 <div key={column.key} className="w-80 shrink-0">
                                                     <div className="flex items-center justify-between mb-5">
@@ -286,6 +405,19 @@ const SprintBoard = ({ sprints, projectId, orgId, statuses }: Props) => {
                                                                 className="h-9 w-9 rounded-xl hover:bg-gray-100"
                                                             >
                                                                 <Plus className="h-5 w-5" />
+                                                            </Button>
+                                                        )}
+                                                        {column.key === "ASSEMBLY" && currentSprint?.status !== "COMPLETED" && (
+                                                            <Button
+                                                                onClick={() => {
+                                                                    Assemble(filteredIssues || [])
+                                                                }}
+                                                                size="icon"
+                                                                variant="ghost"
+                                                                className="h-9 w-9 rounded-xl hover:bg-gray-100"
+                                                                title="Assemble"
+                                                            >
+                                                                <MergeIcon className="h-5 w-5" />
                                                             </Button>
                                                         )}
                                                     </div>
@@ -317,7 +449,8 @@ const SprintBoard = ({ sprints, projectId, orgId, statuses }: Props) => {
                                                                                         issue={issue}
                                                                                         onDelete={() => currentSprint?.id && fetchIssues(currentSprint.id)}
                                                                                         onUpdate={handleIssueUpdate}
-                                                                                        statuses = {statuses}
+                                                                                        statuses={statuses}
+                                                                                        orgUsers={orgUsers}
                                                                                     />
                                                                                 </div>
                                                                             )}
@@ -351,8 +484,18 @@ const SprintBoard = ({ sprints, projectId, orgId, statuses }: Props) => {
                         {/* Inventory dashbaord */}
                         <div>
                             <h2 className="text-lg font-semibold text-gray-900 mb-5">Inventory</h2>
-                            <Inventory statuses={statuses} filteredIssues={filteredIssues} />
+                            <Inventory statuses={statuses} filteredIssues={filteredIssues} mainItemProduced={mainItemProduced} />
                         </div>
+                    </TabsContent>
+                    <TabsContent value="calculator">
+                        {/* Inventory dashbaord */}
+                        {/* <div> */}
+                        {/* <h2 className="text-lg font-semibold text-gray-900 mb-5">Calculator</h2> */}
+                        <Calculator statuses={statuses} filteredIssues={filteredIssues} projectItems={projectItems} />
+                        {/* </div> */}
+                    </TabsContent>
+                    <TabsContent value="logs">
+                        <ProductionLogs sprintId={currentSprint.id} />
                     </TabsContent>
                 </Tabs>
 
@@ -380,8 +523,10 @@ const SprintBoard = ({ sprints, projectId, orgId, statuses }: Props) => {
                     sprintId={currentSprint.id}
                     status={selectedStatus}
                     projectId={projectId}
+                    projectItems={projectItems}
                     onIssueCreated={() => fetchIssues(currentSprint.id)}
                     orgId={orgId}
+                    orgUsers={orgUsers}
                 />
             )}
         </div>

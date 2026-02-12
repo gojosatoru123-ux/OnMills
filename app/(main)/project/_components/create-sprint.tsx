@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { CalendarIcon, Plus, X, Command, Calendar, ArrowRight, Gauge } from "lucide-react";
+import { CalendarIcon, Plus, Command, ArrowRight, Gauge } from "lucide-react";
 import { DayPicker } from "react-day-picker";
 import { format, addDays } from "date-fns";
 import { sprintSchema } from "@/app/lib/validators";
@@ -19,6 +19,8 @@ import { BarLoader } from "react-spinners";
 import "react-day-picker/style.css";
 import CreateItem from "./create-item";
 import CreateStatus from "./create-status";
+import { Switch } from "@/components/ui/switch";
+import { z } from "zod";
 
 type Props = {
     projectTitle: ProjectType['name'],
@@ -29,11 +31,8 @@ type Props = {
     projectStages: ProjectStatusType[],
 }
 
-type SprintFormValues = {
-    name: string;
-    startDate: Date;
-    endDate: Date;
-};
+// Derive type directly from schema to fix the "Resolver" mismatch error
+type SprintFormValues = z.infer<typeof sprintSchema>;
 
 export default function CreateSprint({
     projectTitle,
@@ -58,6 +57,7 @@ export default function CreateSprint({
         control,
         handleSubmit,
         reset,
+        watch,
         formState: { errors },
     } = useForm<SprintFormValues>({
         resolver: zodResolver(sprintSchema),
@@ -65,19 +65,30 @@ export default function CreateSprint({
             name: `${projectKey}-${currentSprintKey}`,
             startDate: dateRange.from,
             endDate: dateRange.to,
+            isLongSprint: false,
         },
     });
+
+    const isLongSprint = watch("isLongSprint");
 
     useEffect(() => {
         reset({
             name: `${projectKey}-${currentSprintKey}`,
             startDate: dateRange.from,
             endDate: dateRange.to,
+            isLongSprint: false,
         });
     }, [currentSprintKey, reset, projectKey]);
 
     const onSubmit = async (data: SprintFormValues) => {
-        await createSprintFn(projectId, data);
+        // If it's a long sprint, you might want to normalize dates before sending to DB
+        const payload = {
+            ...data,
+            // Optional: send nulls or far-future dates if Long Sprint is active
+            startDate: data.isLongSprint ? new Date() : data.startDate,
+            endDate: data.isLongSprint ? addDays(new Date(), 3650) : data.endDate,
+        };
+        await createSprintFn(projectId, payload);
     };
 
     useEffect(() => {
@@ -91,7 +102,6 @@ export default function CreateSprint({
     return (
         <div className="w-full">
             <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-10 pb-6 border-b border-[#F2F0EB] gap-6">
-                {/* Project Identity Section */}
                 <div className="flex items-center gap-5">
                     <div className="w-14 h-14 bg-white border border-[#F2F0EB] rounded-2xl flex items-center justify-center shadow-sm relative overflow-hidden group">
                         <div className="absolute inset-0 bg-amber-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -112,7 +122,6 @@ export default function CreateSprint({
                     </div>
                 </div>
 
-                {/* Actions Hub (Sprint & Items) */}
                 <div className="flex items-center justify-center gap-3 w-full lg:w-auto flex-wrap">
                     <Dialog open={open} onOpenChange={setOpen}>
                         <DialogTrigger asChild>
@@ -147,54 +156,74 @@ export default function CreateSprint({
                                     {errors.name && <p className="text-[#FF7A5C] text-[10px] font-bold uppercase mt-1 ml-1">{errors.name.message as string}</p>}
                                 </div>
 
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-[#86868B] uppercase tracking-widest ml-1">Duration Profile</label>
+                                <div className="flex items-center justify-between p-5 bg-white/40 border border-[#F2F0EB] rounded-2xl backdrop-blur-md">
+                                    <div className="flex flex-col">
+                                        <label className="text-[10px] font-black text-[#1D1D1F] uppercase tracking-widest">Long Sprint Profile</label>
+                                        <span className="text-[11px] text-[#86868B] font-medium">Bypass temporal constraints</span>
+                                    </div>
                                     <Controller
                                         control={control}
-                                        name="startDate"
-                                        render={() => (
-                                            <Popover>
-                                                <PopoverTrigger asChild>
-                                                    <Button variant="outline" className="h-14 w-full bg-white/50 border-[#F2F0EB] rounded-2xl justify-between px-4 font-bold text-[13px]">
-                                                        <span className="flex items-center gap-2">
-                                                            <CalendarIcon size={14} className="text-[#FF7A5C]" />
-                                                            {dateRange.from && dateRange.to ? (
-                                                                `${format(dateRange.from, "MMM dd, yyyy")} — ${format(dateRange.to, "MMM dd, yyyy")}`
-                                                            ) : (
-                                                                "Select Range"
-                                                            )}
-                                                        </span>
-                                                    </Button>
-                                                </PopoverTrigger>
-                                                <PopoverContent className="w-auto p-4 bg-white/95 backdrop-blur-2xl border-white/20 rounded-[24px] shadow-2xl" align="center">
-                                                    <DayPicker
-                                                        classNames={{
-                                                            chevron: "fill-[#FF7A5C]",
-                                                            range_start: "bg-[#FF7A5C] text-white rounded-full",
-                                                            range_end: "bg-[#FF7A5C] text-white rounded-full",
-                                                            range_middle: "bg-[#FFF0EA] text-[#FF7A5C]",
-                                                            day_button: "hover:bg-[#FAF9F6] rounded-full transition-colors",
-                                                            today: "font-black text-[#FF7A5C] underline",
-                                                        }}
-                                                        mode="range"
-                                                        disabled={[{ before: new Date() }]}
-                                                        selected={dateRange}
-                                                        onSelect={(range) => {
-                                                            if (range?.from && range?.to) {
-                                                                setDateRange({ from: range.from, to: range.to });
-                                                                reset({
-                                                                    ...control._formValues,
-                                                                    startDate: range.from,
-                                                                    endDate: range.to
-                                                                });
-                                                            }
-                                                        }}
-                                                    />
-                                                </PopoverContent>
-                                            </Popover>
+                                        name="isLongSprint"
+                                        render={({ field }) => (
+                                            <Switch
+                                                checked={field.value}
+                                                onCheckedChange={field.onChange}
+                                                className="data-[state=checked]:bg-[#FF7A5C]"
+                                            />
                                         )}
                                     />
                                 </div>
+
+                                {!isLongSprint && (
+                                    <div className="space-y-2 animate-in fade-in zoom-in-95 duration-300">
+                                        <label className="text-[10px] font-black text-[#86868B] uppercase tracking-widest ml-1">Duration Profile</label>
+                                        <Controller
+                                            control={control}
+                                            name="startDate"
+                                            render={() => (
+                                                <Popover>
+                                                    <PopoverTrigger asChild>
+                                                        <Button variant="outline" className="h-14 w-full bg-white/50 border-[#F2F0EB] rounded-2xl justify-between px-4 font-bold text-[13px]">
+                                                            <span className="flex items-center gap-2">
+                                                                <CalendarIcon size={14} className="text-[#FF7A5C]" />
+                                                                {dateRange.from && dateRange.to ? (
+                                                                    `${format(dateRange.from, "MMM dd, yyyy")} — ${format(dateRange.to, "MMM dd, yyyy")}`
+                                                                ) : (
+                                                                    "Select Range"
+                                                                )}
+                                                            </span>
+                                                        </Button>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-auto p-4 bg-white/95 backdrop-blur-2xl border-white/20 rounded-[24px] shadow-2xl" align="center">
+                                                        <DayPicker
+                                                            classNames={{
+                                                                chevron: "fill-[#FF7A5C]",
+                                                                range_start: "bg-[#FF7A5C] text-white rounded-full",
+                                                                range_end: "bg-[#FF7A5C] text-white rounded-full",
+                                                                range_middle: "bg-[#FFF0EA] text-[#FF7A5C]",
+                                                                day_button: "hover:bg-[#FAF9F6] rounded-full transition-colors",
+                                                                today: "font-black text-[#FF7A5C] underline",
+                                                            }}
+                                                            mode="range"
+                                                            disabled={[{ before: new Date() }]}
+                                                            selected={dateRange}
+                                                            onSelect={(range) => {
+                                                                if (range?.from && range?.to) {
+                                                                    setDateRange({ from: range.from, to: range.to });
+                                                                    reset({
+                                                                        ...control._formValues,
+                                                                        startDate: range.from,
+                                                                        endDate: range.to
+                                                                    });
+                                                                }
+                                                            }}
+                                                        />
+                                                    </PopoverContent>
+                                                </Popover>
+                                            )}
+                                        />
+                                    </div>
+                                )}
 
                                 <Button
                                     type="submit"
@@ -212,20 +241,17 @@ export default function CreateSprint({
                         </DialogContent>
                     </Dialog>
                     
-                    {/* Integrated Item Creation */}
-                    {/* <div className="flex items-center gap-3 flex-wrap"> */}
-                        <CreateItem 
-                            projectTitle={projectTitle} 
-                            projectId={projectId} 
-                            items={projectItems}
-                        />
+                    <CreateItem 
+                        projectTitle={projectTitle} 
+                        projectId={projectId} 
+                        items={projectItems}
+                    />
 
-                        <CreateStatus 
-                            projectTitle={projectTitle}
-                            projectId={projectId}
-                            stages={projectStages}
-                        />
-                    {/* </div> */}
+                    <CreateStatus 
+                        projectTitle={projectTitle}
+                        projectId={projectId}
+                        stages={projectStages}
+                    />
                 </div>
             </div>
         </div>

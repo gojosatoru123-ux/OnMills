@@ -23,8 +23,8 @@ import useFetch from "@/hooks/use-fetch";
 import { createIssue } from "@/actions/issues";
 import { getOrganizationUsers } from "@/actions/organization";
 import { issueSchema } from "@/app/lib/validators";
-import { X } from "lucide-react";
-import { IssueType, ProjectType, SprintType } from "@/lib/types";
+import { X, ClipboardList, Info, User, Zap } from "lucide-react";
+import { IssueType, ItemType, ProjectType, SprintType, UserType } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { getProjectItems } from "@/actions/items";
 
@@ -36,6 +36,8 @@ type Props = {
   projectId: ProjectType["id"];
   onIssueCreated: () => void;
   orgId: ProjectType["organizationId"];
+  projectItems: ItemType[]
+  orgUsers: UserType[]
 };
 
 export default function IssueCreationDrawer({
@@ -46,6 +48,8 @@ export default function IssueCreationDrawer({
   projectId,
   onIssueCreated,
   orgId,
+  projectItems,
+  orgUsers
 }: Props) {
   const router = useRouter();
 
@@ -56,22 +60,15 @@ export default function IssueCreationDrawer({
     setData: setNewIssue,
   } = useFetch<IssueType, [string, any]>(createIssue);
 
-  const {
-    fn: fetchUsers,
-    data: users,
-  } = useFetch(getOrganizationUsers);
-
-  const {
-    fn: fetchItems,
-    data: items,
-  } = useFetch(getProjectItems)
+  // const { fn: fetchUsers, data: users } = useFetch(getOrganizationUsers);
+  // const { fn: fetchItems, data: items } = useFetch(getProjectItems);
 
   const {
     control,
     register,
     handleSubmit,
     reset,
-    formState: { errors }
+    formState: { errors },
   } = useForm({
     resolver: zodResolver(issueSchema),
     defaultValues: {
@@ -80,16 +77,15 @@ export default function IssueCreationDrawer({
       description: "",
       assigneeId: "",
       quantity: 1,
-      unit: "PIECES",
     },
   });
 
   useEffect(() => {
     if (isOpen && orgId) {
-      fetchUsers(orgId)
-      fetchItems(projectId)
-    };
-  }, [isOpen, orgId]);
+      // fetchUsers(orgId);
+      // fetchItems(projectId);
+    }
+  }, [isOpen, orgId, projectId]);
 
   const unlockScreen = () => {
     document.body.style.pointerEvents = "auto";
@@ -126,15 +122,15 @@ export default function IssueCreationDrawer({
         }
       }}
     >
-      <DrawerContent className="max-w-2xl mx-auto rounded-t-3xl bg-white dark:bg-gray-900 border-x border-t border-gray-200 dark:border-gray-800 shadow-2xl">
-        {/* Drawer Handle */}
-        <div className="absolute top-2 left-1/2 -translate-x-1/2 w-12 h-1 bg-gray-300 dark:bg-gray-600 rounded-full" />
+      <DrawerContent className="max-w-2xl mx-auto bg-slate-50 border-t border-slate-200 shadow-2xl rounded-t-[2rem]">
 
-        <DrawerHeader className="px-8 pt-7 pb-6 border-b border-gray-200 dark:border-gray-800">
-          <div className="flex items-center justify-between">
-            <DrawerTitle className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-              Create New Issue
+        <DrawerHeader >
+
+          <div className="flex justify-between">
+            <DrawerTitle className="text-xl font-bold text-slate-900 tracking-tight">
+              New
             </DrawerTitle>
+
             <Button
               variant="ghost"
               size="icon"
@@ -142,156 +138,135 @@ export default function IssueCreationDrawer({
                 onClose();
                 unlockScreen();
               }}
-              className="rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="rounded-full hover:bg-slate-100"
             >
-              <X className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+              <X className="h-5 w-5 text-slate-500" />
             </Button>
           </div>
+
         </DrawerHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="px-8 py-2 space-y-8 overflow-y-auto max-h-[70vh]">
-          {/* Title */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Item name
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          className="px-8 py-2 overflow-y-auto max-h-[75vh]"
+        >
+          {/* Section: Primary Details */}
+          <div className="space-y-2 pt-2">
+            <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+              <Info className="h-3 w-3" /> Core Information
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2  gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-700">Item Catalog</label>
+                <Controller
+                  name="title"
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger className="h-11 bg-white border-slate-200 shadow-sm rounded-xl focus:ring-2 focus:ring-slate-900/5 transition-all">
+                        <SelectValue placeholder="Search or select item..." />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl shadow-xl border-slate-200">
+                        {projectItems?.map((item) => (
+                          <SelectItem key={item.id} value={item.id} className="py-2">
+                            <span className="font-medium text-slate-700">{item?.name}</span>
+                            <span className="ml-2 text-xs px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded uppercase font-bold">
+                              {item?.itemUnit}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {errors.title && (
+                  <p className="text-rose-500 text-[11px] font-bold mt-1 ml-1 uppercase">{errors.title.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-700">Qty</label>
+                <Input
+                  id="quantity"
+                  {...register("quantity", { valueAsNumber: true })}
+                  type="number"
+                  className="h-11 bg-white border-slate-200 shadow-sm rounded-xl focus:ring-2 focus:ring-slate-900/5 transition-all"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Section: Workflow */}
+          <div className="space-y-4 pt-2">
+            <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+              <Zap className="h-3 w-3" /> Workflow & Assignment
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
+                  <User className="h-3.5 w-3.5 opacity-50" /> Assignee
+                </label>
+                <Controller
+                  name="assigneeId"
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger className="h-11 bg-white border-slate-200 shadow-sm rounded-xl">
+                        <SelectValue placeholder="Unassigned" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl border-slate-200">
+                        {orgUsers?.map((user) => (
+                          <SelectItem key={user.id} value={user.id}>
+                            {user?.name || "Unnamed User"}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  />
+                  {errors.assigneeId && (
+                    <p className="text-rose-500 text-[11px] font-bold mt-1 ml-1 uppercase">{errors.assigneeId.message}</p>
+                  )}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-700">Priority Level</label>
+                <Controller
+                  name="priority"
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger className="h-11 bg-white border-slate-200 shadow-sm rounded-xl">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl border-slate-200">
+                        {["LOW", "MEDIUM", "HIGH", "URGENT"].map((p) => (
+                          <SelectItem key={p} value={p}>
+                            <div className="flex items-center gap-2">
+                              <span className={`w-2 h-2 rounded-full ${p === 'URGENT' ? 'bg-rose-500' :
+                                p === 'HIGH' ? 'bg-orange-500' :
+                                  p === 'MEDIUM' ? 'bg-amber-500' : 'bg-emerald-500'
+                                }`} />
+                              <span className="font-medium text-slate-700">{p}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Section: Description */}
+          <div className="space-y-2 pt-2">
+            <label className="text-sm font-semibold text-slate-700">
+              Description <span className="text-slate-400 font-normal">(Markdown supported)</span>
             </label>
-            {/* <Input
-              {...register("title")}
-              placeholder="Enter a clear, descriptive title"
-              className="h-12 text-lg font-medium border-gray-300 dark:border-gray-700 focus:border-indigo-500 focus:ring-indigo-500 rounded-xl"
-            /> */}
-            <Controller name="title" control={control}
-              render={({ field }) => (
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <SelectTrigger className="h-11 rounded-xl border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                    <SelectValue placeholder="select item from catalog..." />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl border-gray-200 dark:border-gray-700 shadow-lg">
-                    {items?.map((item) => (
-                      <SelectItem key={item.id} value={item.id}>
-                        <span className="font-medium">{item?.name || "no item"}</span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            />
-            {errors.title && <p className="text-[#FF7A5C] text-[11px] font-bold mt-1 ml-1 uppercase">{errors.title.message}</p>}
-
-          </div>
-
-
-          <div className="grid grid-cols-2 gap-6">
-
-            {/* quantity */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Quantity
-              </label>
-              <Input id="quantity" {...register("quantity", { valueAsNumber: true })} type="number" placeholder="Enter quantity..." />
-              {errors.quantity && <p className="text-[#FF7A5C] text-[11px] font-bold mt-1 ml-1 uppercase">{errors.quantity.message}</p>}
-            </div>
-
-            {/* unit */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Unit
-              </label>
-              <Controller
-                name="unit"
-                control={control}
-                render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <SelectTrigger className="h-11 rounded-xl border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl border-gray-200 dark:border-gray-700 shadow-lg">
-                      {["PIECES", "KILOGRAM", "UNITS", "GRAM", "TONNE"].map((p) => (
-                        <SelectItem key={p} value={p}>
-                          <span>
-                            {p}
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </div>
-          </div>
-
-          {/* Assignee & Priority */}
-          <div className="grid grid-cols-2 gap-6">
-            {/* Assignee */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Assignee
-              </label>
-              <Controller
-                name="assigneeId"
-                control={control}
-                render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <SelectTrigger className="h-11 rounded-xl border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                      <SelectValue placeholder="Select assignee..." />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl border-gray-200 dark:border-gray-700 shadow-lg">
-                      {users?.map((user) => (
-                        <SelectItem key={user.id} value={user.id}>
-                          <span className="font-medium">{user?.name || "Unnamed User"}</span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-
-              />
-              {errors.assigneeId && <p className="text-[#FF7A5C] text-[11px] font-bold mt-1 ml-1 uppercase">{errors.assigneeId.message}</p>}
-            </div>
-
-            {/* Priority */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Priority
-              </label>
-              <Controller
-                name="priority"
-                control={control}
-                render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <SelectTrigger className="h-11 rounded-xl border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl border-gray-200 dark:border-gray-700 shadow-lg">
-                      {["LOW", "MEDIUM", "HIGH", "URGENT"].map((p) => (
-                        <SelectItem key={p} value={p}>
-                          <span
-                            className={`font-medium ${p === "URGENT"
-                              ? "text-red-600 dark:text-red-400"
-                              : p === "HIGH"
-                                ? "text-orange-600"
-                                : p === "MEDIUM"
-                                  ? "text-amber-600"
-                                  : "text-green-600"
-                              }`}
-                          >
-                            {p}
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </div>
-          </div>
-
-          {/* Description */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Description <span className="text-gray-500 font-normal">(Optional)</span>
-            </label>
-            <div className="rounded-xl border border-gray-300 dark:border-gray-700 overflow-hidden shadow-sm">
+            <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm focus-within:ring-2 focus-within:ring-slate-900/5 transition-all">
               <Controller
                 name="description"
                 control={control}
@@ -300,10 +275,10 @@ export default function IssueCreationDrawer({
                     value={field.value}
                     onChange={field.onChange}
                     preview="edit"
-                    height={101}
-                    className="border-0 bg-transparent! text-slate-700!"
+                    height={180}
+                    className="border-none"
                     textareaProps={{
-                      placeholder: "Add a detailed description using Markdown...",
+                      placeholder: "Outline the tasks, steps, or issues here...",
                     }}
                   />
                 )}
@@ -311,14 +286,25 @@ export default function IssueCreationDrawer({
             </div>
           </div>
 
-          {/* Submit Button */}
-          <div className="pt-6 pb-2">
+          {/* Form Actions */}
+          <div className="flex items-center gap-3  pt-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                onClose();
+                unlockScreen();
+              }}
+              className="flex-1 h-12 rounded-xl text-slate-600 font-bold hover:bg-slate-200/50"
+            >
+              Cancel
+            </Button>
             <Button
               type="submit"
               disabled={createIssueLoading}
-              className="w-full h-12 rounded-xl text-base font-semibold bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white shadow-lg transition-all"
+              className="flex-2 h-12 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold shadow-lg shadow-slate-900/10 transition-all disabled:opacity-50"
             >
-              {createIssueLoading ? "Creating Issue..." : "Create Issue"}
+              {createIssueLoading ? "Processing..." : "Create Issue"}
             </Button>
           </div>
         </form>

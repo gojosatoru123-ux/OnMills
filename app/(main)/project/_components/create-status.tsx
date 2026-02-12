@@ -15,6 +15,7 @@ import { useForm } from "react-hook-form";
 import { BarLoader } from "react-spinners";
 import { useOrganization } from "@clerk/nextjs";
 import { createProjectStatus, deleteProjectStatus } from "@/actions/status";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 type CreateStatusProps = {
     projectTitle: string;
@@ -152,25 +153,27 @@ const CreateStatus = ({ projectTitle, projectId, stages }: CreateStatusProps) =>
                     </Button>
                 </PopoverTrigger>
                 <PopoverContent side="top" className="w-80 bg-white border border-[#F2F0EB] rounded-2xl shadow-xl" align="end" sideOffset={10}>
-                    {(deleteStatusLoading) && (
-                        <BarLoader width={"100%"} color="#36d7b7" />
-                    )}
-                    <div className="space-y-2">
-                        {stages.length === 0 && <p className="text-center text-[11px] font-bold text-[#86868B] py-4">NO STAGES FOUND</p>}
-                        {stages.map((item) => (
-                            <Item key={item.id} className="group border-[#F2F0EB] hover:border-[#FF7A5C]/30 transition-colors">
-                                <ItemContent>
-                                    <ItemDescription className="font-mono text-[12px] font-bold text-[#1D1D1F]">{item.name}</ItemDescription>
-                                    {(item.name!="TODO" && item.name!="PURCHASE" && item.name!="STORE" && item.name!="SALES") && <ItemDescription>order <span className="font-mono text-[12px] font-bold text-[#1D1D1F]">{item.order}</span></ItemDescription>}
-                                </ItemContent>
-                                <ItemActions>
-                                    {item.name!="TODO" && item.name!="PURCHASE" && item.name!="STORE" && item.name!="SALES" && canChange && <Button disabled={deleteStatusLoading} onClick={() => { setDeleteId(item.id); setDeleteOpen(true); }} variant="ghost" size="icon" className="h-8 w-8 text-[#86868B] hover:text-red-500 hover:bg-red-50 transition-colors">
-                                        <Trash size={14} />
-                                    </Button>}
-                                </ItemActions>
-                            </Item>
-                        ))}
-                    </div>
+                    <ScrollArea className="max-h-72 w-full p-2 overflow-y-auto">
+                        {(deleteStatusLoading) && (
+                            <BarLoader width={"100%"} color="#36d7b7" />
+                        )}
+                        <div className="space-y-2">
+                            {stages.length === 0 && <p className="text-center text-[11px] font-bold text-[#86868B] py-4">NO STAGES FOUND</p>}
+                            {stages.map((item) => (
+                                <Item key={item.id} className="group border-[#F2F0EB] hover:border-[#FF7A5C]/30 transition-colors">
+                                    <ItemContent>
+                                        <ItemDescription className="font-mono text-[12px] font-bold text-[#1D1D1F]">{item.name}</ItemDescription>
+                                        {(item.name != "TODO" && item.name != "PURCHASE" && item.name != "STORE" && item.name != "SALES") && <ItemDescription>order <span className="font-mono text-[12px] font-bold text-[#1D1D1F]">{item.order}</span></ItemDescription>}
+                                    </ItemContent>
+                                    <ItemActions>
+                                        {item.name != "TODO" && item.name != "PURCHASE" && item.name != "STORE" && item.name != "SALES" && canChange && <Button disabled={deleteStatusLoading} onClick={() => { setDeleteId(item.id); setDeleteOpen(true); }} variant="ghost" size="icon" className="h-8 w-8 text-[#86868B] hover:text-red-500 hover:bg-red-50 transition-colors">
+                                            <Trash size={14} />
+                                        </Button>}
+                                    </ItemActions>
+                                </Item>
+                            ))}
+                        </div>
+                    </ScrollArea>
                 </PopoverContent>
             </Popover>
 

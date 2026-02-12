@@ -111,7 +111,7 @@ export default function BoardFilters({ issues, onFilterChange }: BoardFiltersPro
         issue.status.name,
         issue.priority,
         issue.quantity,
-        issue.unit,
+        issue.item.itemUnit,
         issue.assignee?.name || "Unassigned",
         issue.assignee?.email || "N/A",
         issue.reporter?.name || "N/A",

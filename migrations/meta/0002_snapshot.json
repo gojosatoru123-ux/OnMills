@@ -1,6 +1,6 @@
 {
-  "id": "50e1c501-42c5-4402-b81c-d8caae4c9b5a",
-  "prevId": "0350c9e0-e384-4344-8ec5-bf7ee1305c05",
+  "id": "7523e764-b532-4341-998f-f666af7b2414",
+  "prevId": "c8cbd48a-6cab-4693-9331-21e258c9c933",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -93,18 +93,10 @@
         },
         "quantity": {
           "name": "quantity",
-          "type": "integer",
+          "type": "real",
           "primaryKey": false,
           "notNull": true,
           "default": 1
-        },
-        "unit": {
-          "name": "unit",
-          "type": "quantity_unit",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'PIECES'"
         },
         "parent_id": {
           "name": "parent_id",
@@ -253,7 +245,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
@@ -282,7 +274,7 @@
         },
         "reorder_value": {
           "name": "reorder_value",
-          "type": "integer",
+          "type": "real",
           "primaryKey": false,
           "notNull": true,
           "default": 0
@@ -292,6 +284,29 @@
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
+        },
+        "item_unit": {
+          "name": "item_unit",
+          "type": "quantity_unit",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PIECES'"
+        },
+        "using_quantity": {
+          "name": "using_quantity",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "using_unit": {
+          "name": "using_unit",
+          "type": "quantity_unit",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PIECES'"
         }
       },
       "indexes": {},
@@ -307,6 +322,68 @@
             "id"
           ],
           "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "itemTable_project_id_name_unique": {
+          "name": "itemTable_project_id_name_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "project_id",
+            "name"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.productionLogsTable": {
+      "name": "productionLogsTable",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "quantity_produced": {
+          "name": "quantity_produced",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sprint_id": {
+          "name": "sprint_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "productionLogsTable_sprint_id_sprintTable_id_fk": {
+          "name": "productionLogsTable_sprint_id_sprintTable_id_fk",
+          "tableFrom": "productionLogsTable",
+          "tableTo": "sprintTable",
+          "columnsFrom": [
+            "sprint_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
@@ -487,6 +564,13 @@
           "primaryKey": false,
           "notNull": true
         },
+        "is_long_sprint": {
+          "name": "is_long_sprint",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
         "status": {
           "name": "status",
           "type": "sprint_status",
@@ -628,10 +712,18 @@
       "schema": "public",
       "values": [
         "PIECES",
-        "KILOGRAM",
         "UNITS",
+        "SETS",
+        "PACKETS",
+        "KILOGRAM",
         "GRAM",
-        "TONNE"
+        "TONNE",
+        "LITRES",
+        "METERS",
+        "FEET",
+        "INCHES",
+        "SQUARE_METERS",
+        "CUBIC_METERS"
       ]
     },
     "public.sprint_status": {

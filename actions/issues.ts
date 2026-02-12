@@ -13,7 +13,7 @@ type CreateIssueDataProp={
     status: IssueType['statusId'],
     sprintId: SprintType['id'],
     quantity: IssueType['quantity'],
-    unit: IssueType['unit']
+    // unit: IssueType['unit']
 }
 
 export async function createIssue(projectId:ProjectType['id'], data:CreateIssueDataProp) {
@@ -59,7 +59,7 @@ export async function createIssue(projectId:ProjectType['id'], data:CreateIssueD
             assigneeId: data.assigneeId || null,
             order: newOrder,
             quantity: data.quantity,
-            unit: data.unit,
+            // unit: data.unit,
             track:[data.status],
         }).returning().then(res => res[0])
     
@@ -159,14 +159,10 @@ export async function updateIssue(
     }
 ) {
     const { userId, orgId } = await auth();
-
-    if (!userId || !orgId) {
-        throw new Error("Unauthorized access");
-    }
+    if (!userId || !orgId) throw new Error("Unauthorized access");
 
     try {
         return await db.transaction(async (tx) => {
-            // 1. Fetch current state
             const issue = await tx.query.issues.findFirst({
                 where: eq(issues.id, issueId),
                 with: { project: true }
@@ -177,23 +173,35 @@ export async function updateIssue(
 
             const currentQty = issue.quantity;
             const moveQty = data.quantity;
+            const isSelling = data.status === 'SALES';
 
-            if (moveQty > currentQty) {
-                throw new Error("Insufficient quantity available.");
+            // --- FIX START: Handling the direct update return ---
+            if (moveQty === currentQty && data.status !== 'SALES') {
+                const updatedRows = await tx.update(issues)
+                    .set({
+                        statusId: data.status,
+                        priority: data.priority,
+                        assigneeId: data.assigneeId,
+                        track: data.track,
+                        updatedAt: new Date(),
+                    })
+                    .where(eq(issues.id, issueId))
+                    .returning(); 
+
+                // Refetch to get relations (Assignee, Item, etc.)
+                return await tx.query.issues.findFirst({
+                    where: eq(issues.id, updatedRows[0].id),
+                    with: { assignee: true, reporter: true, item: true },
+                });
             }
+            // --- FIX END ---
 
-            // 2. CHECK: If the status is 'DONE' (or your 'SOLD' status), handle consumption
-            const isSelling = data.status === 'SALES'; // Change this to 'SOLD' if that is your key
-
-            // 3. CASE A: Consuming/Moving the WHOLE batch
             if (moveQty === currentQty) {
                 if (isSelling) {
-                    // If sold out completely, delete the record
                     await tx.delete(issues).where(eq(issues.id, issueId));
                     return { id: issueId, deleted: true }; 
                 }
 
-                // Standard full-batch update
                 await tx.update(issues).set({
                     statusId: data.status,
                     priority: data.priority,
@@ -208,19 +216,13 @@ export async function updateIssue(
                 });
             }
 
-            // 4. CASE B: PARTIAL Quantity (Splitting or Partial Sale)
-            
-            // Step 1: Reduce the original issue's quantity
             const remainingQty = currentQty - moveQty;
-            
             await tx.update(issues).set({
                 quantity: remainingQty,
                 isSplit: true,
                 updatedAt: new Date(),
             }).where(eq(issues.id, issueId));
 
-            // Step 2: If we are NOT selling, create a new split issue record
-            // If we ARE selling partial, we just let the original reduce (above) and return the updated original
             if (isSelling) {
                 return await tx.query.issues.findFirst({
                     where: eq(issues.id, issueId),
@@ -228,8 +230,7 @@ export async function updateIssue(
                 });
             }
 
-            // Standard Split Logic (for moving to next production phase)
-            const [newSplitIssue] = await tx.insert(issues).values({
+            const insertedRows = await tx.insert(issues).values({
                 itemId: issue.itemId,
                 description: issue.description,
                 projectId: issue.projectId,
@@ -246,7 +247,7 @@ export async function updateIssue(
             }).returning();
 
             return await tx.query.issues.findFirst({
-                where: eq(issues.id, newSplitIssue.id),
+                where: eq(issues.id, insertedRows[0].id),
                 with: { assignee: true, reporter: true, item: true },
             });
         });
@@ -255,28 +256,28 @@ export async function updateIssue(
     }
 }
 
-export async function updateIssueOrder(updatedIssues:{statusId:IssueType['statusId'],order:IssueType['order'], id:IssueType['id'], track:IssueType['statusId'][]}[]) {
-    const { userId, orgId } = await auth();
+// export async function updateIssueOrder(updatedIssues:{statusId:IssueType['statusId'],order:IssueType['order'], id:IssueType['id'], track:IssueType['statusId'][]}[]) {
+//     const { userId, orgId } = await auth();
 
-    if (!userId || !orgId) {
-        throw new Error("Unauthorized acess");
-    }
+//     if (!userId || !orgId) {
+//         throw new Error("Unauthorized acess");
+//     }
 
-    try{
-        await db.transaction(async (tx) => {
-            for (const issue of updatedIssues) {
-                await tx.update(issues).set({
-                    statusId: issue.statusId,
-                    order: issue.order,
-                    track: issue.track,
-                    updatedAt: new Date(),
-                }).where(eq(issues.id, issue.id))
-            }
-        })
-        //(issue.track ?? []) This ensures that if the column is empty (null), the code sees [] instead
+//     try{
+//         await db.transaction(async (tx) => {
+//             for (const issue of updatedIssues) {
+//                 await tx.update(issues).set({
+//                     statusId: issue.statusId,
+//                     order: issue.order,
+//                     track: issue.track,
+//                     updatedAt: new Date(),
+//                 }).where(eq(issues.id, issue.id))
+//             }
+//         })
+//         //(issue.track ?? []) This ensures that if the column is empty (null), the code sees [] instead
     
-        return { success: true };
-    }catch(error){
-        throw new Error("Error updating issue order")
-    }
-}
+//         return { success: true };
+//     }catch(error){
+//         throw new Error("Error updating issue order")
+//     }
+// }

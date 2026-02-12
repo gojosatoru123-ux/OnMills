@@ -1,6 +1,6 @@
 {
-  "id": "a07f7c7c-3ecd-4323-b682-9f9fa42d09ac",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "25da3f15-bbd6-4837-ae7f-184f113c1226",
+  "prevId": "7523e764-b532-4341-998f-f666af7b2414",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -245,7 +245,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
@@ -307,6 +307,13 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'PIECES'"
+        },
+        "is_main_product": {
+          "name": "is_main_product",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
         }
       },
       "indexes": {},
@@ -336,6 +343,59 @@
           ]
         }
       },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.productionLogsTable": {
+      "name": "productionLogsTable",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "quantity_produced": {
+          "name": "quantity_produced",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sprint_id": {
+          "name": "sprint_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "productionLogsTable_sprint_id_sprintTable_id_fk": {
+          "name": "productionLogsTable_sprint_id_sprintTable_id_fk",
+          "tableFrom": "productionLogsTable",
+          "tableTo": "sprintTable",
+          "columnsFrom": [
+            "sprint_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false

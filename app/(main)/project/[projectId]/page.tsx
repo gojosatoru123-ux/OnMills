@@ -7,6 +7,7 @@ import { Target, Layers, Box, TicketCheck } from "lucide-react";
 import { ProjectType } from "@/lib/types";
 import { getProjectItems } from "@/actions/items";
 import { getProjectStatus } from "@/actions/status";
+import { getOrganizationUsers } from "@/actions/organization";
 
 type Props={
   params: Promise<{projectId:ProjectType['id']}>
@@ -15,8 +16,11 @@ type Props={
 const Project = async ({ params }:Props) => {
   const { projectId } = await params;
   const project = await getProject(projectId);
-  const projectItems = await getProjectItems(projectId);
+  const items = await getProjectItems(projectId);
+  const projectItems = items.filter((i)=>i.isMainProduct !== true);
+  const projectMainItemproduced = items.filter((i)=>i.isMainProduct)[0];
   const projectStages = await getProjectStatus(projectId);
+  const orgUsers =  await getOrganizationUsers(project && project.organizationId)
 
   if (!project) {
     notFound();
@@ -89,6 +93,9 @@ const Project = async ({ params }:Props) => {
                   projectId={projectId}
                   orgId={project.organizationId}
                   statuses = {projectStages}
+                  projectItems = {projectItems}
+                  mainItemProduced = {projectMainItemproduced}
+                  orgUsers = {orgUsers}
                 />}
              </div>
           </div>

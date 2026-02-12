@@ -15,15 +15,28 @@ import useFetch from "@/hooks/use-fetch";
 import { useRouter } from "next/navigation";
 import { updateSprintStatus } from "@/actions/sprints";
 import { Calendar, Play, Square, Timer, AlertCircle, CircleDot, CheckCircle2, CalendarDays } from "lucide-react";
-import { SprintType } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
+import { UserType } from "@/lib/types";
 
-// 1. Explicitly typed Props for SprintManager
+// Updated Interface based on your requirements
+export interface SprintType { 
+  id: string; 
+  name: string; 
+  startDate: Date; 
+  endDate: Date; 
+  status: 'PLANNED' | 'ACTIVE' | 'COMPLETED'; 
+  projectId: string; 
+  isLongSprint: boolean; // New field
+  createdAt: Date; 
+  updatedAt: Date; 
+}
+
 interface SprintManagerProps {
   sprint: SprintType;
   setSprint: (sprint: SprintType) => void;
   sprints: SprintType[];
   projectId: string;
+  orgUsers: UserType[]
 }
 
 export default function SprintManager({
@@ -31,11 +44,11 @@ export default function SprintManager({
   setSprint,
   sprints,
   projectId,
+  orgUsers
 }: SprintManagerProps) {
   const [status, setStatus] = useState<SprintType['status']>(sprint.status);
   const router = useRouter();
 
-  // 2. Fixed useFetch generic arguments [string, SprintType['status']] to match sprint ID and new status
   const {
     fn: updateStatus,
     loading,
@@ -47,8 +60,9 @@ export default function SprintManager({
   const endDate = new Date(sprint.endDate);
   const now = new Date();
 
+  // Logic: Can only end if it's NOT a long sprint
   const canStart = isBefore(now, endDate) && isAfter(now, startDate) && status === "PLANNED";
-  const canEnd = status === "ACTIVE";
+  const canEnd = status === "ACTIVE" && !sprint.isLongSprint;
 
   const handleStatusChange = async (newStatus: SprintType['status']) => {
     updateStatus(sprint.id, newStatus);
@@ -63,8 +77,15 @@ export default function SprintManager({
 
   const getStatusDisplay = () => {
     if (status === "COMPLETED") return { text: "Cycle Concluded", icon: <Square size={12} />, class: "bg-gray-100 text-gray-500" };
-    if (status === "ACTIVE" && isAfter(now, endDate)) return { text: `Overdue: ${formatDistanceToNow(endDate)}`, icon: <AlertCircle size={12} />, class: "bg-red-50 text-red-600 border border-red-100" };
-    if (status === "PLANNED" && isBefore(now, startDate)) return { text: `T-Minus ${formatDistanceToNow(startDate)}`, icon: <Timer size={12} />, class: "bg-[#FFF0EA] text-[#FF7A5C] border border-[#FFD8C7]" };
+    
+    // Logic: Due dates and Overdue only show if NOT a long sprint
+    if (!sprint.isLongSprint) {
+      if (status === "ACTIVE" && isAfter(now, endDate)) return { text: `Overdue: ${formatDistanceToNow(endDate)}`, icon: <AlertCircle size={12} />, class: "bg-red-50 text-red-600 border border-red-100" };
+      if (status === "PLANNED" && isBefore(now, startDate)) return { text: `T-Minus ${formatDistanceToNow(startDate)}`, icon: <Timer size={12} />, class: "bg-[#FFF0EA] text-[#FF7A5C] border border-[#FFD8C7]" };
+    } else if (status === "ACTIVE") {
+        return { text: "Infinite Stream Active", icon: <CircleDot size={12} className="animate-pulse" />, class: "bg-blue-50 text-blue-600 border border-blue-100" };
+    }
+
     if (status === "ACTIVE") return { text: "Node Live", icon: <Play size={12} />, class: "bg-green-50 text-green-600 border border-green-100" };
     return null;
   };
@@ -96,7 +117,6 @@ export default function SprintManager({
             </SelectTrigger>
             <SelectContent className="rounded-3xl border border-white/30 bg-white/40 backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] p-1.5 overflow-hidden max-h-100">
               {sprints.map((s) => {
-                // Logic for Status-specific styling
                 const statusConfig = {
                   ACTIVE: {
                     bg: "bg-[#FF7A5C]/20",
@@ -128,38 +148,35 @@ export default function SprintManager({
                   >
                     <div className="flex items-center justify-between gap-4">
                       <div className="flex flex-col gap-1">
-                        {/* Sprint Name */}
-                        <span className="text-[14px] font-bold text-[#1D1D1F] tracking-tight group-hover:translate-x-0.5 transition-transform duration-200">
-                          {s.name}
-                        </span>
+                        <div className="flex items-center gap-2">
+                           <span className="text-[14px] font-bold text-[#1D1D1F] tracking-tight group-hover:translate-x-0.5 transition-transform duration-200">
+                            {s.name}
+                          </span>
+                          {s.isLongSprint && (
+                             <Badge variant="outline" className="text-[8px] h-4 px-1.5 border-blue-200 text-blue-500 bg-blue-50/50">PERPETUAL</Badge>
+                          )}
+                        </div>
 
-                        {/* Date Range with Apple-style secondary text */}
                         <div className="flex items-center gap-2 text-[11px] font-medium text-[#86868B]">
                           <span className="opacity-90">
                             {format(new Date(s.startDate), "MMM d")}
                           </span>
                           <span className="w-1.5 h-px bg-[#86868B]/30" />
                           <span className="opacity-90">
-                            {format(new Date(s.endDate), "MMM d, yyyy")}
+                            {s.isLongSprint ? "No Expiry" : format(new Date(s.endDate), "MMM d, yyyy")}
                           </span>
                         </div>
                       </div>
 
-                      {/* Vision-Pro Inspired Status Badge */}
                       <Badge className={`
-            flex items-center gap-1.5 px-2.5 py-1 rounded-full border-none text-[10px] font-bold tracking-wide uppercase
-            ${currentStatus.bg} ${currentStatus.text} ${currentStatus.glow}
-            transition-all duration-300
-          `}>
+                        flex items-center gap-1.5 px-2.5 py-1 rounded-full border-none text-[10px] font-bold tracking-wide uppercase
+                        ${currentStatus.bg} ${currentStatus.text} ${currentStatus.glow}
+                        transition-all duration-300
+                      `}>
                         {currentStatus.icon}
                         {s.status}
                       </Badge>
                     </div>
-
-                    {/* Hover Geometry: Subtle amber bottom highlight */}
-                    {s.status === 'ACTIVE' && (
-                      <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1/2 h-0.5 bg-linear-to-r from-transparent via-[#FF7A5C]/40 to-transparent blur-[1px] opacity-0 group-hover:opacity-100 transition-opacity" />
-                    )}
                   </SelectItem>
                 );
               })}
@@ -198,6 +215,12 @@ export default function SprintManager({
               <Square size={14} fill="currentColor" />
               End Operation
             </Button>
+          )}
+
+          {status === "ACTIVE" && sprint.isLongSprint && (
+            <div className="text-[10px] text-[#86868B] font-bold uppercase tracking-widest px-4 border border-dashed border-[#86868B]/30 py-2.5 rounded-xl">
+              Perpetual Node
+            </div>
           )}
         </div>
       </div>
