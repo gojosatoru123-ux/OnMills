@@ -16,6 +16,7 @@ import { Controller, useForm } from "react-hook-form";
 import { BarLoader } from "react-spinners";
 import { useOrganization } from "@clerk/nextjs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 type CreateItemProps = {
     projectTitle: string;
@@ -36,7 +37,7 @@ const CreateItem = ({ projectId, items }: CreateItemProps) => {
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [deleteId, setDeleteId] = useState<string | null>(null);
     const router = useRouter();
-    
+
     const { loading: createItemLoading, fn: createItemFn, data: createdItem } = useFetch(createItem);
     const { loading: deleteItemLoading, fn: deleteItemFn } = useFetch(deleteItem);
     const { membership } = useOrganization();
@@ -87,13 +88,13 @@ const CreateItem = ({ projectId, items }: CreateItemProps) => {
                         <Plus size={16} strokeWidth={3} /> Add Item
                     </Button>
                 </DialogTrigger>
-                
+
                 {/* Vision Pro Glassmorphism Popup Form */}
                 <DialogContent className="sm:max-w-125 bg-white/70 backdrop-blur-2xl border border-white/20 rounded-[32px] shadow-2xl p-0 overflow-hidden outline-none">
                     {/* Subtle Amber Glow & Floating Geometry */}
                     <div className="absolute inset-0 bg-linear-to-br from-amber-500/5 to-transparent pointer-events-none" />
                     <div className="absolute -top-12 -right-12 w-32 h-32 bg-amber-200/20 blur-3xl rounded-full pointer-events-none" />
-                    
+
                     {createItemLoading && (
                         <div className="absolute inset-x-0 top-0 z-50">
                             <BarLoader width={"100%"} color="#FF7A5C" height={4} />
@@ -108,7 +109,7 @@ const CreateItem = ({ projectId, items }: CreateItemProps) => {
                     </DialogHeader>
 
                     <form onSubmit={handleSubmit(onSubmit)} className={`p-8 pt-6 space-y-6 transition-opacity ${createItemLoading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
-                        
+
                         {/* Transparent Lens Filter Bar Style Input */}
                         <div className="space-y-2">
                             <label className="text-[11px] font-bold text-[#1D1D1F] ml-1 uppercase">Item Name</label>
@@ -212,32 +213,34 @@ const CreateItem = ({ projectId, items }: CreateItemProps) => {
                     </Button>
                 </PopoverTrigger>
                 <PopoverContent side="top" className="w-80 bg-white/80 backdrop-blur-2xl border border-white/40 rounded-2xl shadow-xl p-2" align="end">
-                    <div className="space-y-1">
-                        {items.length === 0 && <p className="text-center text-[11px] font-bold text-[#86868B] py-4 uppercase">No Items</p>}
-                        {items.map((item) => (
-                            <Item key={item.id} className="group border-[#F2F0EB] bg-white/40 hover:bg-white transition-all rounded-xl">
-                                <ItemContent>
-                                    <ItemDescription className="font-mono text-[12px] font-bold text-[#1D1D1F]">{item.name}</ItemDescription>
-                                    <ItemDescription className="text-[10px]">
-                                        Min: <span className="font-mono text-[#FF7A5C]">{item.reorderValue.toFixed(2)}</span> <span className="font-mono text-[#FF7A5C]">{item.itemUnit}</span>
-                                    </ItemDescription>
-                                    <ItemDescription className="text-[10px]">
-                                        Using quantity: <span className="font-mono text-[#FF7A5C]">{item.usingQuantity.toFixed(2)}</span> <span className="font-mono text-[#FF7A5C]">{item.usingUnit}</span>
-                                    </ItemDescription>
-                                </ItemContent>
-                                <ItemActions>
-                                    {canChange && (
-                                        <Button 
-                                            onClick={() => { setDeleteId(item.id); setDeleteOpen(true); }} 
-                                            variant="ghost" size="icon" className="h-8 w-8 text-[#86868B] hover:text-red-500"
-                                        >
-                                            <Trash size={14} />
-                                        </Button>
-                                    )}
-                                </ItemActions>
-                            </Item>
-                        ))}
-                    </div>
+                    <ScrollArea className="max-h-72 w-full p-2 overflow-y-auto">
+                        <div className="space-y-1">
+                            {items.length === 0 && <p className="text-center text-[11px] font-bold text-[#86868B] py-4 uppercase">No Items</p>}
+                            {items.map((item) => (
+                                <Item key={item.id} className="group border-[#F2F0EB] bg-white/40 hover:bg-white transition-all rounded-xl">
+                                    <ItemContent>
+                                        <ItemDescription className="font-mono text-[12px] font-bold text-[#1D1D1F]">{item.name}</ItemDescription>
+                                        <ItemDescription className="text-[10px]">
+                                            Min: <span className="font-mono text-[#FF7A5C]">{item.reorderValue.toFixed(2)}</span> <span className="font-mono text-[#FF7A5C]">{item.itemUnit}</span>
+                                        </ItemDescription>
+                                        <ItemDescription className="text-[10px]">
+                                            Using quantity: <span className="font-mono text-[#FF7A5C]">{item.usingQuantity.toFixed(2)}</span> <span className="font-mono text-[#FF7A5C]">{item.usingUnit}</span>
+                                        </ItemDescription>
+                                    </ItemContent>
+                                    <ItemActions>
+                                        {canChange && (
+                                            <Button
+                                                onClick={() => { setDeleteId(item.id); setDeleteOpen(true); }}
+                                                variant="ghost" size="icon" className="h-8 w-8 text-[#86868B] hover:text-red-500"
+                                            >
+                                                <Trash size={14} />
+                                            </Button>
+                                        )}
+                                    </ItemActions>
+                                </Item>
+                            ))}
+                        </div>
+                    </ScrollArea>
                 </PopoverContent>
             </Popover>
 
