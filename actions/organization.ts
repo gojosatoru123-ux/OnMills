@@ -67,7 +67,7 @@ export async function getProjects(orgId: string) {
 
 }
 
-export async function getOrganizationUsers(orgId: string) {
+export async function getOrganizationUsers(orgId: string | null) {
   const { userId } = await auth();
   if (!userId) {
     throw new Error("Unauthorized access");
@@ -81,6 +81,10 @@ export async function getOrganizationUsers(orgId: string) {
     if (!user) {
       throw new Error("User not found");
     }
+    if (!orgId) {
+      throw new Error("Organization not found");
+    }
+
     const client = await clerkClient()
 
     const organizationMemberships =

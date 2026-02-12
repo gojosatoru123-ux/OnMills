@@ -49,7 +49,7 @@ const IssuesTable = ({filteredIssues, statuses}:Prop) => (
                         filteredIssues?.map((issue) => (
                             <tr
                                 key={issue.id}
-                                className="hover:bg-white/40 transition-all duration-300"
+                                className={`hover:bg-white/40 transition-all duration-300 ${issue.item.isMainProduct ? 'bg-red-500/5 border-l-4 border-red-500/50' : ''}`}
                             >
                                 {/* Issue Title */}
                                 <td className="px-8 py-6">
@@ -77,7 +77,7 @@ const IssuesTable = ({filteredIssues, statuses}:Prop) => (
 
                                 <td className="px-8 py-6">
                                     <div className="text-base font-medium text-gray-900 leading-snug">
-                                        {issue.quantity}
+                                        {issue.quantity} <span className="text-gray-500 text-sm">{issue.item.itemUnit}</span>
                                     </div>
                                 </td>
 

@@ -16,6 +16,7 @@ import { useRouter } from "next/navigation";
 import { updateSprintStatus } from "@/actions/sprints";
 import { Calendar, Play, Square, Timer, AlertCircle, CircleDot, CheckCircle2, CalendarDays } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { UserType } from "@/lib/types";
 
 // Updated Interface based on your requirements
 export interface SprintType { 
@@ -35,6 +36,7 @@ interface SprintManagerProps {
   setSprint: (sprint: SprintType) => void;
   sprints: SprintType[];
   projectId: string;
+  orgUsers: UserType[]
 }
 
 export default function SprintManager({
@@ -42,6 +44,7 @@ export default function SprintManager({
   setSprint,
   sprints,
   projectId,
+  orgUsers
 }: SprintManagerProps) {
   const [status, setStatus] = useState<SprintType['status']>(sprint.status);
   const router = useRouter();

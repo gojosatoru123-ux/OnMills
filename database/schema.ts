@@ -48,7 +48,8 @@ export const itemTable = pgTable("itemTable",{
     projectId: uuid("project_id").notNull().references(()=> projectTable.id, {onDelete:"cascade"}),
     itemUnit: quantityUnitEnum("item_unit").notNull().default('PIECES'),
     usingQuantity: real("using_quantity").notNull().default(1),
-    usingUnit: quantityUnitEnum("using_unit").notNull().default('PIECES')
+    usingUnit: quantityUnitEnum("using_unit").notNull().default('PIECES'),
+    isMainProduct: boolean("is_main_product").notNull().default(false),
 }, (t)=>[
     unique().on(t.projectId, t.name) // No duplicate item names in the same project
 ])
@@ -63,6 +64,13 @@ export const projectStatusTable = pgTable('projectStatusTable', {
     unique().on(t.projectId, t.name),// No duplicate stage names in the same project
     unique().on(t.projectId, t.order)
 ]);
+
+export const productLogsTable = pgTable('productionLogsTable',{
+    id: uuid('id').primaryKey().defaultRandom(),
+    producedAt: timestamp("created_at").defaultNow().notNull(),
+    quantityProduced: real("quantity_produced").notNull(),
+    sprintId: uuid('sprint_id').references(()=>sprintTable.id, {onDelete:"set null"})
+})
 
 export const issues = pgTable("issues", {
     // FIXED: Changed from text to uuid to match your architecture
@@ -83,7 +91,7 @@ export const issues = pgTable("issues", {
     // New field for inventory tracking
     quantity: real("quantity").notNull().default(1),
     // unit: quantityUnitEnum("unit").notNull().default('PIECES'),
-    parentId: uuid("parent_id").references(():any=>issues.id,{onDelete:"cascade"}), // Allows splitting batches by self referencing
+    parentId: uuid("parent_id").references(():any=>issues.id,{onDelete:"set null"}), // Allows splitting batches by self referencing
     isSplit: boolean("is_split").notNull().default(false) // Flag to indicate if this issue was a result of a split
 }, (t) => [
     index("status_order_idx").on(t.statusId, t.order),

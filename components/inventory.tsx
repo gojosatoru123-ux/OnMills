@@ -1,12 +1,13 @@
 // Inventory dashboard
 // import statuses from "@/data/status.json";
-import { ComponentProcessMap, DetailedIssue, ProjectStatusType } from "@/lib/types";
+import { ComponentProcessMap, DetailedIssue, ItemType, ProjectStatusType } from "@/lib/types";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 type Prop = {
     filteredIssues: DetailedIssue[] | null
     statuses: ProjectStatusType[]
+    mainItemProduced: ItemType
 }
-const Inventory = ({ filteredIssues, statuses }: Prop) => {
+const Inventory = ({ filteredIssues, statuses, mainItemProduced }: Prop) => {
     const items = [...new Set(filteredIssues?.map(d => d.item.name))];
     const inventoryDashboard: ComponentProcessMap = {};
     filteredIssues?.forEach(i => {
@@ -85,10 +86,11 @@ const Inventory = ({ filteredIssues, statuses }: Prop) => {
                                 items.map(item => {
                                     const quantityInStore = inventoryDashboard[item]?.["STORE"] || 0;
                                     const isLowStock = quantityInStore <= inventoryDashboard[item]?.["REORDER_VALUE"];
+                                    const isMain = item === mainItemProduced.name
                                     
                                     return (
-                                        <tr key={item} className="group hover:bg-white/10 border-b border-white/5 transition-all duration-500 ease-out">
-                                            <td className="px-8 py-6 font-medium">
+                                        <tr key={item} className={`group hover:bg-white/10 border-b border-white/5 transition-all duration-500 ease-out ${isMain ? 'bg-rose-500/5' : ''}`}>
+                                            <td className={`px-8 py-6 font-medium`}>
                                                 <div className="flex items-center gap-4">
                                                     <span className="tracking-wide">{item}</span>
                                                     {isLowStock && (

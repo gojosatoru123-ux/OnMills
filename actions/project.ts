@@ -1,6 +1,6 @@
 "use server"
 import { db } from "@/database/drizzle";
-import { projectStatusTable, projectTable, userTable } from "@/database/schema";
+import { itemTable, projectStatusTable, projectTable, userTable } from "@/database/schema";
 import { ProjectType } from "@/lib/types";
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { eq } from "drizzle-orm";
@@ -50,6 +50,15 @@ export async function createProject(data: CreateProjectType) {
 
             // 3. Insert the stages
             await tx.insert(projectStatusTable).values(defaultStages);
+            
+            await tx.insert(itemTable).values({
+                name: data.name,
+                reorderValue: 0,
+                projectId: project.id,
+                usingQuantity: 0,
+                usingUnit: 'UNITS',
+                isMainProduct: true,
+            })
 
             return project;
         });

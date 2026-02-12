@@ -256,28 +256,28 @@ export async function updateIssue(
     }
 }
 
-export async function updateIssueOrder(updatedIssues:{statusId:IssueType['statusId'],order:IssueType['order'], id:IssueType['id'], track:IssueType['statusId'][]}[]) {
-    const { userId, orgId } = await auth();
+// export async function updateIssueOrder(updatedIssues:{statusId:IssueType['statusId'],order:IssueType['order'], id:IssueType['id'], track:IssueType['statusId'][]}[]) {
+//     const { userId, orgId } = await auth();
 
-    if (!userId || !orgId) {
-        throw new Error("Unauthorized acess");
-    }
+//     if (!userId || !orgId) {
+//         throw new Error("Unauthorized acess");
+//     }
 
-    try{
-        await db.transaction(async (tx) => {
-            for (const issue of updatedIssues) {
-                await tx.update(issues).set({
-                    statusId: issue.statusId,
-                    order: issue.order,
-                    track: issue.track,
-                    updatedAt: new Date(),
-                }).where(eq(issues.id, issue.id))
-            }
-        })
-        //(issue.track ?? []) This ensures that if the column is empty (null), the code sees [] instead
+//     try{
+//         await db.transaction(async (tx) => {
+//             for (const issue of updatedIssues) {
+//                 await tx.update(issues).set({
+//                     statusId: issue.statusId,
+//                     order: issue.order,
+//                     track: issue.track,
+//                     updatedAt: new Date(),
+//                 }).where(eq(issues.id, issue.id))
+//             }
+//         })
+//         //(issue.track ?? []) This ensures that if the column is empty (null), the code sees [] instead
     
-        return { success: true };
-    }catch(error){
-        throw new Error("Error updating issue order")
-    }
-}
+//         return { success: true };
+//     }catch(error){
+//         throw new Error("Error updating issue order")
+//     }
+// }

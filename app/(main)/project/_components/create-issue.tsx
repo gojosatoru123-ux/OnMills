@@ -24,7 +24,7 @@ import { createIssue } from "@/actions/issues";
 import { getOrganizationUsers } from "@/actions/organization";
 import { issueSchema } from "@/app/lib/validators";
 import { X, ClipboardList, Info, User, Zap } from "lucide-react";
-import { IssueType, ProjectType, SprintType } from "@/lib/types";
+import { IssueType, ItemType, ProjectType, SprintType, UserType } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { getProjectItems } from "@/actions/items";
 
@@ -36,6 +36,8 @@ type Props = {
   projectId: ProjectType["id"];
   onIssueCreated: () => void;
   orgId: ProjectType["organizationId"];
+  projectItems: ItemType[]
+  orgUsers: UserType[]
 };
 
 export default function IssueCreationDrawer({
@@ -46,6 +48,8 @@ export default function IssueCreationDrawer({
   projectId,
   onIssueCreated,
   orgId,
+  projectItems,
+  orgUsers
 }: Props) {
   const router = useRouter();
 
@@ -56,8 +60,8 @@ export default function IssueCreationDrawer({
     setData: setNewIssue,
   } = useFetch<IssueType, [string, any]>(createIssue);
 
-  const { fn: fetchUsers, data: users } = useFetch(getOrganizationUsers);
-  const { fn: fetchItems, data: items } = useFetch(getProjectItems);
+  // const { fn: fetchUsers, data: users } = useFetch(getOrganizationUsers);
+  // const { fn: fetchItems, data: items } = useFetch(getProjectItems);
 
   const {
     control,
@@ -78,8 +82,8 @@ export default function IssueCreationDrawer({
 
   useEffect(() => {
     if (isOpen && orgId) {
-      fetchUsers(orgId);
-      fetchItems(projectId);
+      // fetchUsers(orgId);
+      // fetchItems(projectId);
     }
   }, [isOpen, orgId, projectId]);
 
@@ -164,7 +168,7 @@ export default function IssueCreationDrawer({
                         <SelectValue placeholder="Search or select item..." />
                       </SelectTrigger>
                       <SelectContent className="rounded-xl shadow-xl border-slate-200">
-                        {items?.map((item) => (
+                        {projectItems?.map((item) => (
                           <SelectItem key={item.id} value={item.id} className="py-2">
                             <span className="font-medium text-slate-700">{item?.name}</span>
                             <span className="ml-2 text-xs px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded uppercase font-bold">
@@ -213,7 +217,7 @@ export default function IssueCreationDrawer({
                         <SelectValue placeholder="Unassigned" />
                       </SelectTrigger>
                       <SelectContent className="rounded-xl border-slate-200">
-                        {users?.map((user) => (
+                        {orgUsers?.map((user) => (
                           <SelectItem key={user.id} value={user.id}>
                             {user?.name || "Unnamed User"}
                           </SelectItem>

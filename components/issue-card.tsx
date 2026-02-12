@@ -4,15 +4,16 @@ import { formatDistanceToNow } from "date-fns";
 import IssueDetailsDialog from "./issue-details-dialog";
 import UserAvatar from "./user-avatar";
 import { useRouter } from "next/navigation";
-import { DetailedIssue, Priority, ProjectStatusType } from "@/lib/types"; // Ensure Priority is exported from your types
+import { DetailedIssue, Priority, ProjectStatusType, UserType } from "@/lib/types"; // Ensure Priority is exported from your types
 
 // 1. Define the config with a specific Record type to satisfy indexing
 const priorityConfig: Record<Priority, { borderColor: string }> = {
-  LOW: { borderColor: "border-r-[#28CD41]" },
-  MEDIUM: { borderColor: "border-r-[#FFCC00]" },
-  HIGH: { borderColor: "border-r-[#FF9500]" },
-  URGENT: { borderColor: "border-r-[#FF3B30]" },
+  LOW: { borderColor: "border-[#28CD41]" },
+  MEDIUM: { borderColor: "border-[#FFCC00]" },
+  HIGH: { borderColor: "border-[#FF9500]" },
+  URGENT: { borderColor: "border-[#FF3B30]" },
 };
+
 
 // 2. Explicitly define the Props interface
 interface IssueCardProps {
@@ -21,6 +22,7 @@ interface IssueCardProps {
   onDelete?: () => void;
   onUpdate?: (updated: DetailedIssue) => void;
   statuses: ProjectStatusType[];
+  orgUsers: UserType[];
 }
 
 export default function IssueCard({ 
@@ -29,6 +31,7 @@ export default function IssueCard({
   onDelete = () => { }, 
   onUpdate = () => { } ,
   statuses,
+  orgUsers
 }: IssueCardProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const router = useRouter();
@@ -40,7 +43,7 @@ export default function IssueCard({
     <>
       <div 
         onClick={() => setIsDialogOpen(true)} 
-        className={`group relative flex flex-col p-5 bg-white/40 backdrop-blur-[30px] border border-[#1D1D1F]/10 ${config.borderColor} border-r-[6px] rounded-[24px] transition-all duration-300 hover:bg-white/60 hover:-translate-y-1 active:scale-[0.97] cursor-pointer overflow-hidden`}
+        className={`group relative flex flex-col p-5 bg-white/40 backdrop-blur-[30px] border border-[#1D1D1F]/10 ${config.borderColor} ${!issue.item.isMainProduct ? 'border-r-[6px]' : 'border-2'} rounded-[24px] transition-all duration-300 hover:bg-white/60 hover:-translate-y-1 active:scale-[0.97] cursor-pointer overflow-hidden ${issue.item.isMainProduct && 'border-red-600 border-dotted'} animate-in fade-in slide-in-from-bottom-2 duration-700`}
       >
         <div className="relative z-10 flex flex-col">
           <div className="flex justify-between items-start mb-1">
@@ -48,8 +51,11 @@ export default function IssueCard({
               {issue.item.name}
             </h3>
             <span className="text-sm font-medium text-[#1D1D1F]/60 tabular-nums">
-              {issue.quantity} <span className="text-[10px] uppercase text-[#1D1D1F]/40">{issue.item.itemUnit}</span>
+              {Number.isInteger(issue.quantity)?issue.quantity:issue.quantity.toFixed(4)} <span className="text-[10px] uppercase text-[#1D1D1F]/40">{issue.item.itemUnit}</span>
             </span>
+            {issue.status.key=="ASSEMBLY" && <span className="text-sm font-medium text-[#1D1D1F]/60 tabular-nums">
+              {issue.item.usingQuantity} <span className="text-[10px] uppercase text-[#1D1D1F]/40">{issue.item.usingUnit}</span>
+            </span>}
           </div>
 
           {showStatus && (
@@ -84,6 +90,7 @@ export default function IssueCard({
           statuses={statuses}
           onDelete={() => { router.refresh(); onDelete(); }} 
           onUpdate={(updated) => { router.refresh(); onUpdate(updated); }} 
+          // orgUsers={orgUsers}
         />
       )}
     </>

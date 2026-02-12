@@ -44,6 +44,7 @@ export interface ItemType {
     usingQuantity: number;
     usingUnit: 'PIECES' | 'UNITS' | 'SETS' | 'PACKETS' | 'KILOGRAM' | 'GRAM' | 'TONNE' | 'LITRES' | 'METERS' | 'FEET' | 'INCHES' | 'SQUARE_METERS' | 'CUBIC_METERS';
     projectId: string;
+    isMainProduct: boolean;
 }
 
 export interface IssueType {
@@ -63,6 +64,13 @@ export interface IssueType {
     quantity: number;
     parentId: string | null;
     isSplit: boolean;
+}
+
+export interface Productionlogs {
+    id: string;
+    producedAt: Date;
+    quantityProduced: number;
+    sprintId: string;
 }
 
 export type DetailedIssue = IssueType & {

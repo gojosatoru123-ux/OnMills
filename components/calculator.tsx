@@ -86,7 +86,7 @@ const Calculator = ({ statuses, filteredIssues, projectItems }: Props) => {
   }, [projectItems, filteredIssues, targetQuantity]);
 
   return (
-    <div className="p-1 space-y-8 min-h-screen text-slate-900 font-sans">
+    <div className="p-1 space-y-8 min-h-screen text-slate-900 font-sans animate-in fade-in slide-in-from-bottom-2 duration-700">
       {/* Light Glass Header */}
       <div className="relative p-7 rounded-[2.5rem] border border-white/60 backdrop-blur-2xl shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] overflow-hidden">
         {/* Amber Glow Geometry */}
@@ -193,14 +193,14 @@ const Calculator = ({ statuses, filteredIssues, projectItems }: Props) => {
                       <td className="p-6">
                         <div className="flex items-center gap-3">
                           <div className="text-xs text-slate-400"><ArrowRight className="w-3 h-3"/></div>
-                          <span className="font-bold text-slate-600">{item.totalRequired} {item.usingUnit}</span>
+                          <span className="font-bold text-slate-600">{Number.isInteger(item.totalRequired)?item.totalRequired:item.totalRequired.toFixed(4)} {item.usingUnit}</span>
                         </div>
                       </td>
                       <td className="p-6">
                         {item.shortage > 0 ? (
                           <div className="inline-flex flex-col">
                             <span className="text-rose-500 font-black text-xs">SHORTAGE</span>
-                            <span className="text-[10px] text-rose-400 font-bold">-{item.shortage} {item.usingUnit}</span>
+                            <span className="text-[10px] text-rose-400 font-bold">-{Number.isInteger(item.shortage)?item.shortage:item.shortage.toFixed(4)} {item.usingUnit}</span>
                           </div>
                         ) : (
                           <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-600 text-[10px] font-black tracking-tighter">READY</span>
