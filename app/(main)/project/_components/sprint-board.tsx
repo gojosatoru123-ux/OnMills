@@ -427,8 +427,8 @@ const SprintBoard = ({ sprints, projectId, orgId, statuses, projectItems, mainIt
                                                             <div
                                                                 ref={provided.innerRef}
                                                                 {...provided.droppableProps}
-                                                                className={`min-h-96 rounded-3xl p-4 transition-all duration-200 bg-gray-50/70
-                                                                ${snapshot.isDraggingOver ? "bg-[#FFF0EA]/40 border-2 border-dashed border-[#FF7A5C]/20" : "bg-[#FAF9F6]/40"}`}
+                                                                className={`h-full rounded-3xl p-4 transition-all duration-200 bg-gray-50/70 border border-gray-100
+                                                                ${snapshot.isDraggingOver ? "bg-[#FFF0EA]/20 border-2 border-dashed border-[#FF7A5C]" : "bg-[#FAF9F6]/20"}`}
                                                             >
                                                                 <div className="space-y-3">
                                                                     {columnIssues.map((issue, index) => (
